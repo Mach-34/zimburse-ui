@@ -3,6 +3,7 @@ import LandingView from './views/Landing';
 import ReimbursementsView from './views/Reimbursements';
 import ReimbursementAdminView from './views/AdminEscrow/ReimbursementAdminView';
 import ReimbursementManagementView from './views/ReimbursementManagement';
+import { AztecProvider } from './contexts/AztecContext';
 
 const router = createBrowserRouter([
   {
@@ -26,7 +27,9 @@ const router = createBrowserRouter([
 function App() {
   return (
     <>
-      <RouterProvider router={router} />
+      <AztecProvider>
+        <RouterProvider router={router} />
+      </AztecProvider>
     </>
   );
 }
