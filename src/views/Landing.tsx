@@ -1,6 +1,11 @@
 import { Link } from 'react-router-dom';
+import { useAztec } from '../contexts/AztecContext';
 
 export default function LandingView(): JSX.Element {
+  const { connectWallet, disconnectWallet, wallet } = useAztec();
+
+  console.log('Wallet: ', wallet);
+
   return (
     <div className='flex flex-col justify-between h-screen'>
       <div className='flex flex-col items-center justify-center px-10 py-5'>
@@ -23,6 +28,17 @@ export default function LandingView(): JSX.Element {
               Setup Reimbursement
             </Link>
           </div>
+        </div>
+        <div className='flex flex-col gap-4 mt-10'>
+          <button onClick={() => connectWallet()}>Connect Wallet</button>
+          {wallet && (
+            <>
+              <button onClick={() => disconnectWallet()}>
+                Disconnect Wallet
+              </button>
+              <div>{wallet.scopes[0].toString(16)}</div>
+            </>
+          )}
         </div>
       </div>
       <div className='bg-zimburseGray flex h-[42px] items-center justify-between px-4'>
