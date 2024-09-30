@@ -45,7 +45,6 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
   const disconnectWallet = async () => {
     await wc.disconnect();
     setWallet(null);
-    setWc(null);
   };
 
   useEffect(() => {
@@ -63,14 +62,12 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
       );
       setWc(connector);
       // attempt to restore past session
-      // const restored = await connector.reconnect();
-      //   if (restored) {
-      //     setWallet(restored);
-      //   }
+      const restored = await connector.reconnect();
+      if (restored) {
+        setWallet(restored);
+      }
     })();
   }, []);
-
-  console.log('Wc: ', wc);
 
   return (
     <AztecContext.Provider
