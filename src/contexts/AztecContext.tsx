@@ -61,14 +61,16 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         },
         pxe
       );
+      setWc(connector);
       // attempt to restore past session
       // const restored = await connector.reconnect();
-      setWc(connector);
       //   if (restored) {
       //     setWallet(restored);
       //   }
     })();
   }, []);
+
+  console.log('Wc: ', wc);
 
   return (
     <AztecContext.Provider
