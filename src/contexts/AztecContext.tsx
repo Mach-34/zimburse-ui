@@ -7,11 +7,11 @@ import {
 } from 'react';
 import { createPXEClient, waitForPXE } from '@aztec/aztec.js';
 import { ShieldswapWalletSdk } from '@shieldswap/wallet-sdk';
-import { disconnect } from 'process';
 
 const { VITE_APP_WC_PROJECT_ID: WC_PROJECT_ID } = import.meta.env;
 
 type AztecContextProps = {
+  connecting: boolean;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => Promise<void>;
   setUser: (user: string) => void;
@@ -20,6 +20,7 @@ type AztecContextProps = {
 };
 
 const DEFAULT_AZTEC_CONTEXT_PROPS = {
+  connecting: false,
   connectWallet: async () => {},
   disconnectWallet: async () => {},
   setUser: (_user: string) => null,
@@ -32,6 +33,7 @@ const AztecContext = createContext<AztecContextProps>(
 );
 
 export const AztecProvider = ({ children }: { children: ReactNode }) => {
+  const [connecting, setConnecting] = useState<boolean>(true);
   const [wallet, setWallet] = useState<any>(null); // TODO: Change from any
   const [wc, setWc] = useState<any>(null); // TODO: Change from any
   const [user, setUser] = useState<string>('Guest');
@@ -66,12 +68,20 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
       if (restored) {
         setWallet(restored);
       }
+      setConnecting(false);
     })();
   }, []);
 
   return (
     <AztecContext.Provider
-      value={{ connectWallet, disconnectWallet, setUser, user, wallet }}
+      value={{
+        connecting,
+        connectWallet,
+        disconnectWallet,
+        setUser,
+        user,
+        wallet,
+      }}
     >
       {children}
     </AztecContext.Provider>

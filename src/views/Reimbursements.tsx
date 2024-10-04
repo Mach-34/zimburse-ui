@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import google from '../assets/google.svg';
 import { Upload } from 'lucide-react';
+import AppLayout from '../layouts/AppLayout';
 
 const hasEscrows = true;
 
@@ -42,20 +43,13 @@ const REIMBURSEMENTS: Array<Reimbursement> = [
 ];
 
 export default function ReimbursementsView(): JSX.Element {
-  const [emailFile, setEmailFile] = useState<boolean>(true);
+  const [emailFile] = useState<boolean>(true);
   const [selectedReimbursement, setSelectedReimbursement] =
     useState<Reimbursement | null>(null);
 
   return (
-    <div
-      className='flex flex-col items-center justify-between px-10 py-5'
-      style={{ height: hasEscrows ? '95vh' : '80vh' }}
-    >
-      <div className='flex justify-between w-full'>
-        <div className='w-[100px]' />
-        <div className='text-xl'>Your Z-Imburse Escrows</div>
-        <button>Wallet Connect</button>
-      </div>
+    <AppLayout>
+      <div className='text-center text-3xl'>Your Z-Imburse Escrows</div>
       {hasEscrows ? (
         <>
           <div className='flex flex-1 gap-16 min-h-0 mt-16 w-full'>
@@ -176,6 +170,6 @@ export default function ReimbursementsView(): JSX.Element {
           </div>
         </>
       )}
-    </div>
+    </AppLayout>
   );
 }

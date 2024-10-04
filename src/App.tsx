@@ -4,6 +4,7 @@ import ReimbursementsView from './views/Reimbursements';
 import ReimbursementAdminView from './views/AdminEscrow/ReimbursementAdminView';
 import ReimbursementManagementView from './views/ReimbursementManagement';
 import { AztecProvider } from './contexts/AztecContext';
+import Header from './components/Header';
 
 const router = createBrowserRouter([
   {
