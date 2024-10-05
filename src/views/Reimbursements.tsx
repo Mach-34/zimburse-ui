@@ -2,6 +2,8 @@ import { useState } from 'react';
 import google from '../assets/google.svg';
 import { Upload } from 'lucide-react';
 import AppLayout from '../layouts/AppLayout';
+import FileInput from '../components/FileInput';
+import { makeLinodeInputs } from '@mach-34/zimburse/dist/linode';
 
 const hasEscrows = true;
 
@@ -43,9 +45,17 @@ const REIMBURSEMENTS: Array<Reimbursement> = [
 ];
 
 export default function ReimbursementsView(): JSX.Element {
-  const [emailFile] = useState<boolean>(true);
+  const [emailFile, setEmailFile] = useState<File | null>(null);
   const [selectedReimbursement, setSelectedReimbursement] =
     useState<Reimbursement | null>(null);
+
+  const submitClaim = async () => {
+    if (!emailFile) return;
+    const arrayBuff = await emailFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuff);
+    const inputs = await makeLinodeInputs(buffer);
+    console.log('Inputs: ', inputs);
+  };
 
   return (
     <AppLayout>
@@ -128,22 +138,28 @@ export default function ReimbursementsView(): JSX.Element {
                   </div>
                   <div className='flex flex-col items-center justify-center w-full'>
                     {emailFile ? (
-                      <button className='bg-[#89B8FF] w-3/5'>
+                      <button
+                        className='bg-[#89B8FF] w-3/5'
+                        onClick={() => submitClaim()}
+                      >
                         Submit Claim
                       </button>
                     ) : (
-                      <>
-                        <button className='bg-[#89B8FF] flex items-center justify-between w-3/5'>
+                      <div className='w-1/2'>
+                        <button className='bg-[#89B8FF] flex items-center justify-between w-full'>
                           <img alt='Google' src={google} />
                           <div>Import from Gmail</div>
                           <div />
                         </button>
-                        <button className='bg-[#89B8FF] flex justify-between mt-8 w-3/5'>
-                          <Upload />
-                          <div>Upload .eml</div>
-                          <div />
-                        </button>
-                      </>
+                        <FileInput
+                          accept='.eml'
+                          Icon={Upload}
+                          id='Entitlement Claim'
+                          onUpload={(e) => setEmailFile(e.target.files[0])}
+                          style={{ marginTop: '32px', width: '100%' }}
+                          text='Upload .eml'
+                        />
+                      </div>
                     )}
                   </div>
                 </>
