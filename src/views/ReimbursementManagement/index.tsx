@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AddPolicyModal from './components/AddPolicyModal';
 import deposit from '../../assets/deposit.svg';
 import Policy from './components/Policy';
@@ -8,6 +8,11 @@ import AddRecipientModal from './components/AddRecipientModal';
 import RecipientDataModal from './components/RecipientDataModal';
 import AppLayout from '../../layouts/AppLayout';
 import { toast } from 'react-toastify';
+import { ZImburseContract } from '../../artifacts';
+import { useAztec } from '../../contexts/AztecContext';
+import { useParams } from 'react-router-dom';
+import { AztecAddress } from '@aztec/circuits.js';
+import { truncateAddress } from '../../utils';
 
 const POLICIES = [
   {
@@ -33,7 +38,13 @@ type Recipient = {
   name: string;
 };
 
+const { VITE_APP_POLICY_RECIPIENTS: POLICY_RECIPIENTS } = import.meta.env;
+
 export default function ReimbursementManagementView(): JSX.Element {
+  const { id: escrowAddress } = useParams();
+  const { wallet } = useAztec();
+
+  const [addingRecipient, setAddingRecipient] = useState<boolean>(false);
   const [recipients, setRecipients] = useState<Array<Recipient>>([]);
   const [selectedRecipient, setSelectedRecipient] = useState<any>(null);
   const [showDepositModal, setShowDepositModal] = useState<boolean>(false);
@@ -42,25 +53,40 @@ export default function ReimbursementManagementView(): JSX.Element {
     useState<boolean>(false);
   const [showTxModal, setShowTxModal] = useState<boolean>(false);
 
-  const addRecipient = (address: string, name: string) => {
+  const addRecipient = async (address: string, name: string) => {
+    if (!escrowAddress || !wallet) return;
     try {
-      const recipient = {
-        activePolicies: 'Active Policies: X',
-        address,
-        name,
-        totalClaimed: 'Total Claimed:  $XX',
-      };
-      setRecipients((prev) => [...prev, recipient]);
+      setAddingRecipient(true);
+      const escrowContract = await ZImburseContract.at(
+        AztecAddress.fromString(escrowAddress),
+        wallet
+      );
+      await escrowContract.methods
+        .give_entitlement(AztecAddress.fromString(address), 2200)
+        .send()
+        .wait();
+      setRecipients((prev) => [...prev, { address, name }]);
+      toast.success('Added recipient to escrow!');
     } catch {
       toast.error('Error occurred adding recipient.');
     } finally {
+      setAddingRecipient(false);
       setShowAddRecipientModal(false);
     }
   };
 
+  const fetchRecipients = () => {
+    const parsed = JSON.parse(POLICY_RECIPIENTS);
+    setRecipients(parsed);
+  };
+
+  useEffect(() => {
+    fetchRecipients();
+  }, []);
+
   return (
     <AppLayout>
-      <div className='flex gap-16 h-[82vh]'>
+      <div className='flex gap-16 h-[80vh]'>
         <div className='flex flex-col justify-between w-1/2'>
           <div>
             <div className='text-4xl'>Fake Group</div>
@@ -121,22 +147,29 @@ export default function ReimbursementManagementView(): JSX.Element {
               Add Recipient
             </button>
             <div className='flex-1 mt-4 overflow-y-auto w-full'>
-              {recipients.map((recipient) => (
-                <div
-                  className='bg-white cursor-pointer flex justify-between mt-2 px-2 py-1'
-                  onClick={() => setSelectedRecipient(recipient)}
-                >
-                  <div>
-                    <div className='text-xl'>{recipient.name}</div>
-                    <div>{recipient.address}</div>
+              {!!recipients.length ? (
+                recipients.map((recipient) => (
+                  <div
+                    className='bg-white cursor-pointer flex justify-between mt-2 px-2 py-1'
+                    key={recipient.address}
+                    onClick={() => setSelectedRecipient(recipient)}
+                  >
+                    <div>
+                      <div className='text-xl'>{recipient.name}</div>
+                      <div>{truncateAddress(recipient.address, 7, 7)}</div>
+                    </div>
+                    <div className='flex flex-col gap-2 justify-between'>
+                      <div className='h-6' />
+                      <div>Total Claimed: $XX</div>
+                      <div>Active Policies: X</div>
+                    </div>
                   </div>
-                  <div className='flex flex-col gap-2 justify-between'>
-                    <div className='h-6' />
-                    <div>Total Claimed: $XX</div>
-                    <div>Active Policies: X</div>
-                  </div>
+                ))
+              ) : (
+                <div className='flex h-full items-center justify-center'>
+                  No current reicpients
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -145,6 +178,7 @@ export default function ReimbursementManagementView(): JSX.Element {
           open={showPolicyModal}
         />
         <AddRecipientModal
+          loading={addingRecipient}
           onClose={() => setShowAddRecipientModal(false)}
           onFinish={addRecipient}
           open={showAddRecipientModal}

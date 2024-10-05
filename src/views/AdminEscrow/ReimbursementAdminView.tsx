@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import AddGroupModal from './components/AddGroupModal';
 import AppLayout from '../../layouts/AppLayout';
 import { ZImburseContract } from '../../artifacts';
-import { TokenContract } from '@aztec/noir-contracts.js';
 import { useAztec } from '../../contexts/AztecContext';
 import { toast } from 'react-toastify';
 
@@ -75,7 +74,7 @@ export default function ReimbursementSetupView(): JSX.Element {
 
   return (
     <AppLayout>
-      <div className='flex flex-col h-[82vh]'>
+      <div className='flex flex-col h-[80vh]'>
         <div className='text-center text-3xl'>You Z-Imburse Escrows</div>
         <button
           className='ml-auto mt-16'
