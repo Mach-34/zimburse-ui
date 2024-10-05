@@ -14,8 +14,6 @@ import {
 } from '@aztec/aztec.js';
 // import { ShieldswapWalletSdk } from '@shieldswap/wallet-sdk';
 import { getSchnorrAccount } from '@aztec/accounts/schnorr';
-import { createAccounts } from '@aztec/accounts/testing';
-import { TokenContract } from '@aztec/noir-contracts.js';
 
 const { VITE_APP_SECRET_KEY: SECRET_KEY, VITE_APP_SIGNING_KEY: SIGNING_KEY } =
   import.meta.env;

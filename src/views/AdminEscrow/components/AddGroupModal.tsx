@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import Modal, { ModalProps } from '../../../components/Modal';
 import { useEffect, useMemo, useState } from 'react';
+import Loader from '../../../components/Loader';
 
 type AddGroupModalProps = {
   loading: boolean;
@@ -15,7 +16,12 @@ export default function AddGroupModal({
 }: AddGroupModalProps): JSX.Element {
   const [name, setName] = useState<string>('');
 
-  // const buttonText = useMemo(() => {}, [loading, name]);
+  const buttonText = useMemo(() => {
+    if (loading) {
+      return `Deploying ${name} Escrow Contract`;
+    }
+    return `Deploy ${name || '"Name"'} Escrow Contract`;
+  }, [loading, name]);
 
   useEffect(() => {
     setName('');
@@ -37,8 +43,16 @@ export default function AddGroupModal({
             <div>Name: </div>
             <input onChange={(e) => setName(e.target.value)} value={name} />
           </div>
-          <button className='bg-[#7896FF]' onClick={() => onFinish(name)}>
-            Deploy {name || '"Name"'} Escrow Contract
+          <button
+            className='bg-[#7896FF] flex gap-2 items-center'
+            onClick={() => onFinish(name)}
+          >
+            <div>{buttonText}</div>
+            {loading && (
+              <div>
+                <Loader />
+              </div>
+            )}
           </button>
         </div>
       </div>
