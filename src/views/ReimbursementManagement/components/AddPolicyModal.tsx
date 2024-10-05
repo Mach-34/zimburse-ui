@@ -42,9 +42,10 @@ export default function AddPolicyModal({
       <div className='flex flex-col justify-between h-[95%]'>
         <div>
           <div className='flex justify-center mt-6'>
-            {POLICIES.map((policy) => (
+            {POLICIES.map((policy, index) => (
               <div
                 className='cursor-pointer py-1 text-center w-60'
+                key={index}
                 onClick={() => setDisplayPolicy(policy)}
                 style={{
                   backgroundColor:

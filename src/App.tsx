@@ -4,6 +4,9 @@ import ReimbursementsView from './views/Reimbursements';
 import ReimbursementAdminView from './views/AdminEscrow/ReimbursementAdminView';
 import ReimbursementManagementView from './views/ReimbursementManagement';
 import { AztecProvider } from './contexts/AztecContext';
+import Modal from 'react-modal';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const router = createBrowserRouter([
   {
@@ -24,11 +27,14 @@ const router = createBrowserRouter([
   },
 ]);
 
+Modal.setAppElement('#root');
+
 function App() {
   return (
     <>
       <AztecProvider>
         <RouterProvider router={router} />
+        <ToastContainer position='top-right' theme='colored' />
       </AztecProvider>
     </>
   );

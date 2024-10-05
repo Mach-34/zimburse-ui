@@ -40,8 +40,11 @@ export default function TransactionHistoryModal({
         <X className='ml-auto' cursor='pointer' onClick={() => onClose()} />
         <div className='text-2xl'>Transaction History</div>
         <div className='flex-1 mt-8 overflow-y-auto'>
-          {TXS.map((tx) => (
-            <div className='bg-[#A8A6A6] flex h-[118px] justify-between mb-8 p-2'>
+          {TXS.map((tx, index) => (
+            <div
+              className='bg-[#A8A6A6] flex h-[118px] justify-between mb-8 p-2'
+              key={index}
+            >
               <div className='flex flex-col h-full justify-between'>
                 <div>
                   <div className='text-xl'>{tx.heading}</div>

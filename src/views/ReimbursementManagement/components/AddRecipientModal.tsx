@@ -1,12 +1,15 @@
 import { X } from 'lucide-react';
 import Modal, { ModalProps } from '../../../components/Modal';
 import { useEffect, useState } from 'react';
+import Loader from '../../../components/Loader';
 
 type AddRecipientModalProps = {
+  loading: boolean;
   onFinish: (address: string, name: string) => void;
 } & Omit<ModalProps, 'children'>;
 
 export default function AddRecipientModal({
+  loading,
   onClose,
   onFinish,
   open,
@@ -39,10 +42,11 @@ export default function AddRecipientModal({
           />
         </div>
         <button
-          className='bg-zimburseBlue'
+          className='bg-zimburseBlue flex items-center gap-2'
           onClick={() => onFinish(address, name)}
         >
-          Add Recipient
+          <div>{loading ? 'Adding recipient...' : 'Add Recipient'}</div>
+          {loading && <Loader />}
         </button>
       </div>
     </Modal>
