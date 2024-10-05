@@ -75,7 +75,7 @@ export default function ReimbursementSetupView(): JSX.Element {
 
   return (
     <AppLayout>
-      <div className='flex flex-col h-[80vh]'>
+      <div className='flex flex-col h-[82vh]'>
         <div className='text-center text-3xl'>You Z-Imburse Escrows</div>
         <button
           className='ml-auto mt-16'

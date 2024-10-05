@@ -7,6 +7,7 @@ import DepositModal from './components/DepositModal';
 import AddRecipientModal from './components/AddRecipientModal';
 import RecipientDataModal from './components/RecipientDataModal';
 import AppLayout from '../../layouts/AppLayout';
+import { toast } from 'react-toastify';
 
 const POLICIES = [
   {
@@ -27,17 +28,13 @@ const POLICIES = [
   },
 ];
 
-const DUMMY_RECIPIENT = {
-  activePolicies: 'Active Policies: X',
-  address: '0x....................',
-  name: 'Name',
-  totalClaimed: 'Total Claimed:  $XX',
+type Recipient = {
+  address: string;
+  name: string;
 };
 
-const RECIPIENTS = new Array(5).fill(DUMMY_RECIPIENT);
-
 export default function ReimbursementManagementView(): JSX.Element {
-  const [recipients, setRecipients] = useState<Array<any>>(RECIPIENTS);
+  const [recipients, setRecipients] = useState<Array<Recipient>>([]);
   const [selectedRecipient, setSelectedRecipient] = useState<any>(null);
   const [showDepositModal, setShowDepositModal] = useState<boolean>(false);
   const [showPolicyModal, setShowPolicyModal] = useState<boolean>(false);
@@ -46,19 +43,24 @@ export default function ReimbursementManagementView(): JSX.Element {
   const [showTxModal, setShowTxModal] = useState<boolean>(false);
 
   const addRecipient = (address: string, name: string) => {
-    const recipient = {
-      activePolicies: 'Active Policies: X',
-      address,
-      name,
-      totalClaimed: 'Total Claimed:  $XX',
-    };
-    setRecipients((prev) => [...prev, recipient]);
-    setShowAddRecipientModal(false);
+    try {
+      const recipient = {
+        activePolicies: 'Active Policies: X',
+        address,
+        name,
+        totalClaimed: 'Total Claimed:  $XX',
+      };
+      setRecipients((prev) => [...prev, recipient]);
+    } catch {
+      toast.error('Error occurred adding recipient.');
+    } finally {
+      setShowAddRecipientModal(false);
+    }
   };
 
   return (
     <AppLayout>
-      <div className='flex gap-16'>
+      <div className='flex gap-16 h-[82vh]'>
         <div className='flex flex-col justify-between w-1/2'>
           <div>
             <div className='text-4xl'>Fake Group</div>
@@ -130,8 +132,8 @@ export default function ReimbursementManagementView(): JSX.Element {
                   </div>
                   <div className='flex flex-col gap-2 justify-between'>
                     <div className='h-6' />
-                    <div>{recipient.totalClaimed}</div>
-                    <div>{recipient.activePolicies}</div>
+                    <div>Total Claimed: $XX</div>
+                    <div>Active Policies: X</div>
                   </div>
                 </div>
               ))}
