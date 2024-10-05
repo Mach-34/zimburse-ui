@@ -1,18 +1,21 @@
 import { X } from 'lucide-react';
 import Modal, { ModalProps } from '../../../components/Modal';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-type AddGroupModalProps = { onFinish: (name: string) => void } & Omit<
-  ModalProps,
-  'children'
->;
+type AddGroupModalProps = {
+  loading: boolean;
+  onFinish: (name: string) => void;
+} & Omit<ModalProps, 'children'>;
 
 export default function AddGroupModal({
+  loading,
   onClose,
   onFinish,
   open,
 }: AddGroupModalProps): JSX.Element {
   const [name, setName] = useState<string>('');
+
+  // const buttonText = useMemo(() => {}, [loading, name]);
 
   useEffect(() => {
     setName('');
@@ -35,7 +38,7 @@ export default function AddGroupModal({
             <input onChange={(e) => setName(e.target.value)} value={name} />
           </div>
           <button className='bg-[#7896FF]' onClick={() => onFinish(name)}>
-            Deploy “Name” Escrow Contract
+            Deploy {name || '"Name"'} Escrow Contract
           </button>
         </div>
       </div>

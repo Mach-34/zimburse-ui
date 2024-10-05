@@ -4,7 +4,7 @@ import ReimbursementsView from './views/Reimbursements';
 import ReimbursementAdminView from './views/AdminEscrow/ReimbursementAdminView';
 import ReimbursementManagementView from './views/ReimbursementManagement';
 import { AztecProvider } from './contexts/AztecContext';
-import Header from './components/Header';
+import Modal from 'react-modal';
 
 const router = createBrowserRouter([
   {
@@ -24,6 +24,8 @@ const router = createBrowserRouter([
     element: <ReimbursementManagementView />,
   },
 ]);
+
+Modal.setAppElement('#root');
 
 function App() {
   return (

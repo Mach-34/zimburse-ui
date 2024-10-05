@@ -3,17 +3,25 @@ import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AddGroupModal from './components/AddGroupModal';
 import AppLayout from '../../layouts/AppLayout';
+import { ZImburseContract } from '../../artifacts';
+import { TokenContract } from '@aztec/noir-contracts.js';
+import { useAztec } from '../../contexts/AztecContext';
 
-const GROUPS = new Array(5)
-  .fill('Group')
-  .map((group, index) => `${group} ${index + 1}`);
+const { VITE_APP_USDC_CONTRACT: USDC_CONTRACT } = import.meta.env;
 
 export default function ReimbursementSetupView(): JSX.Element {
-  const [groups, setGroups] = useState<Array<string>>(GROUPS);
+  const { wallet } = useAztec();
+
+  const [groups, setGroups] = useState<Array<string>>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [showGroupModal, setShowGroupModal] = useState<boolean>(false);
 
-  const addEscrowGroup = (name: string) => {
+  const addEscrowGroup = async (name: string) => {
+    if (!wallet) return;
+    const escrow = await ZImburseContract.deploy(wallet, USDC_CONTRACT, name)
+      .send()
+      .deployed();
+    console.log('Zimburse contract: ', escrow.address.toString());
     setGroups((prev) => [...prev, name]);
     setShowGroupModal(false);
   };
@@ -34,6 +42,7 @@ export default function ReimbursementSetupView(): JSX.Element {
               <div
                 className='bg-zimburseGray cursor-pointer mb-4 px-10 py-4'
                 onClick={() => setSelectedGroup(group)}
+                key={group}
                 style={{
                   border:
                     selectedGroup === group
@@ -78,6 +87,7 @@ export default function ReimbursementSetupView(): JSX.Element {
           </div>
         </div>
         <AddGroupModal
+          loading={false}
           onClose={() => setShowGroupModal(false)}
           onFinish={addEscrowGroup}
           open={showGroupModal}

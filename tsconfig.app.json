@@ -5,6 +5,9 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
+    "paths": {
+      "z-imburse/*": ["./z-imburse/src/*"]
+    },
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -21,4 +24,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"]
+
 }
