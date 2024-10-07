@@ -2,9 +2,10 @@ import { useMemo, useRef, useState } from 'react';
 import { useAztec } from '../contexts/AztecContext';
 import { truncateAddress } from '../utils';
 import useOutsideAlerter from '../hooks/useOutsideAlerter';
+import { ACCOUNTS } from '../utils/constants';
 
 export default function Header(): JSX.Element {
-  const { connecting, connectWallet, disconnectWallet, wallet } = useAztec();
+  const { addresses, connecting, switchWallet, wallet } = useAztec();
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const menuRef = useRef(null);
 
@@ -14,7 +15,7 @@ export default function Header(): JSX.Element {
     if (connecting) {
       return 'Connecting to Aztec...';
     } else if (wallet) {
-      return truncateAddress(wallet.scopes[0].toString());
+      return truncateAddress(wallet.getAddress().toString());
     } else {
       return 'Wallet connect';
     }
@@ -24,16 +25,26 @@ export default function Header(): JSX.Element {
     <div className='flex justify-end py-5 px-10'>
       <button
         className='ml-auto relative'
-        onClick={() => (wallet ? setShowMenu(!showMenu) : connectWallet())}
+        disabled={!wallet}
+        onClick={() => setShowMenu(!showMenu)}
       >
         {walletButtonText}
-        {showMenu && (
+        {!!wallet && showMenu && (
           <div
-            className='absolute bg-zimburseGray left-0 py-2 top-[calc(100%+12px)] w-full hover:bg-[#A8A6A6]'
-            onClick={() => disconnectWallet()}
+            className='absolute bg-zimburseGray left-0 top-[calc(100%+12px)] w-full'
             ref={menuRef}
           >
-            Logout
+            {addresses
+              .filter((address) => address !== wallet.getAddress().toString())
+              .map((address) => (
+                <div
+                  className='cursor-pointer p-4 hover:bg-[#A8A6A6]'
+                  key={address}
+                  onClick={() => switchWallet(address)}
+                >
+                  {truncateAddress(address)}
+                </div>
+              ))}
           </div>
         )}
       </button>
