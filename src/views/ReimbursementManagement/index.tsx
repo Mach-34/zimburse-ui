@@ -8,7 +8,7 @@ import AddRecipientModal from './components/AddRecipientModal';
 import RecipientDataModal from './components/RecipientDataModal';
 import AppLayout from '../../layouts/AppLayout';
 import { toast } from 'react-toastify';
-import { ZImburseContract } from '../../artifacts';
+// import { ZImburseEscrowContract } from '../../artifacts';
 import { useAztec } from '../../contexts/AztecContext';
 import { useParams } from 'react-router-dom';
 import { AztecAddress } from '@aztec/circuits.js';
@@ -53,27 +53,31 @@ export default function ReimbursementManagementView(): JSX.Element {
     useState<boolean>(false);
   const [showTxModal, setShowTxModal] = useState<boolean>(false);
 
-  const addRecipient = async (address: string, name: string) => {
-    if (!escrowAddress || !wallet) return;
-    try {
-      setAddingRecipient(true);
-      const escrowContract = await ZImburseContract.at(
-        AztecAddress.fromString(escrowAddress),
-        wallet
-      );
-      await escrowContract.methods
-        .give_entitlement(AztecAddress.fromString(address), 2200)
-        .send()
-        .wait();
-      setRecipients((prev) => [...prev, { address, name }]);
-      toast.success('Added recipient to escrow!');
-    } catch {
-      toast.error('Error occurred adding recipient.');
-    } finally {
-      setAddingRecipient(false);
-      setShowAddRecipientModal(false);
-    }
-  };
+  // const addRecipient = async (address: string, name: string) => {
+  //   if (!escrowAddress || !wallet) return;
+  //   try {
+  //     setAddingRecipient(true);
+  //     const escrowContract = await ZImburseEscrowContract.at(
+  //       AztecAddress.fromString(escrowAddress),
+  //       wallet
+  //     );
+  //     await escrowContract.methods
+  //       .give_recurring_entitlement(
+  //         AztecAddress.fromString(address),
+  //         2200,
+  //         1234
+  //       )
+  //       .send()
+  //       .wait();
+  //     setRecipients((prev) => [...prev, { address, name }]);
+  //     toast.success('Added recipient to escrow!');
+  //   } catch {
+  //     toast.error('Error occurred adding recipient.');
+  //   } finally {
+  //     setAddingRecipient(false);
+  //     setShowAddRecipientModal(false);
+  //   }
+  // };
 
   const fetchRecipients = () => {
     const parsed = JSON.parse(POLICY_RECIPIENTS);

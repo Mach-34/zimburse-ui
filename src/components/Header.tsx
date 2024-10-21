@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from 'react';
 import { useAztec } from '../contexts/AztecContext';
 import { truncateAddress } from '../utils';
 import useOutsideAlerter from '../hooks/useOutsideAlerter';
-import { ACCOUNTS } from '../utils/constants';
 
 export default function Header(): JSX.Element {
   const { addresses, connecting, switchWallet, wallet } = useAztec();

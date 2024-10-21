@@ -1,8 +1,6 @@
-import ZImburseContractArtifactJson from "./ZImburse.json" assert { type: "json" };
-import { ZImburseContract, ZImburseContractArtifact } from "./ZImburse.js";
-
 export {
-  ZImburseContractArtifactJson as ZImburseJsonArtifact,
-  ZImburseContract,
-  ZImburseContractArtifact
-};
+  TokenContract,
+  MultiCallEntrypointContract,
+} from "@aztec/noir-contracts.js";
+export { ZImburseEscrowContract } from "./ZImburseEscrow";
+export { ZImburseRegistryContract } from "./ZImburseRegistry";

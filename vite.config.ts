@@ -1,10 +1,10 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite';
-// import { aztec } from '@shieldswap/vite-plugin-aztec';
+import { aztec } from '@shieldswap/vite-plugin-aztec';
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 export default defineConfig({
-  plugins: [nodePolyfills(), react()],
+  plugins: [aztec(), nodePolyfills(), react()],
   build: {
     target: "esnext",
   },
