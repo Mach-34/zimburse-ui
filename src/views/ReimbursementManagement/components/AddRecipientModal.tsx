@@ -5,7 +5,7 @@ import Loader from '../../../components/Loader';
 
 type AddRecipientModalProps = {
   loading: boolean;
-  onFinish: (address: string, name: string) => void;
+  onFinish: (address: string, amount: number, name: string) => void;
 } & Omit<ModalProps, 'children'>;
 
 export default function AddRecipientModal({
@@ -15,10 +15,12 @@ export default function AddRecipientModal({
   open,
 }: AddRecipientModalProps) {
   const [address, setAddress] = useState<string>('');
+  const [amount, setAmount] = useState<number>(0);
   const [name, setName] = useState<string>('');
 
   useEffect(() => {
     setAddress('');
+    setAmount(0);
     setName('');
   }, [open]);
 
@@ -40,10 +42,17 @@ export default function AddRecipientModal({
             onChange={(e) => setAddress(e.target.value)}
             value={address}
           />
+          <div>Amount</div>
+          <input
+            className='bg-zimburseGray my-2'
+            onChange={(e) => setAmount(Number(e.target.value))}
+            value={amount}
+            type='number'
+          />
         </div>
         <button
           className='bg-zimburseBlue flex items-center gap-2'
-          onClick={() => onFinish(address, name)}
+          onClick={() => onFinish(address, amount, name)}
         >
           <div>{loading ? 'Adding recipient...' : 'Add Recipient'}</div>
           {loading && <Loader />}

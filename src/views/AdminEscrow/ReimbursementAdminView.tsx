@@ -90,9 +90,9 @@ export default function ReimbursementSetupView(): JSX.Element {
         escrowAddress,
         wallet
       );
-      const titleBigInt = await escrowContract.methods.get_title().simulate();
+      const titleBytes = await escrowContract.methods.get_title().simulate();
       const title = Buffer.from(
-        new Uint8Array(titleBigInt.map(Number))
+        new Uint8Array(titleBytes.map(Number))
       ).toString('utf8');
 
       escrows.push({ id: escrowAddress, title });
