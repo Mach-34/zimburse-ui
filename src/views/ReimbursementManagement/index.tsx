@@ -41,7 +41,7 @@ type Recipient = {
 
 export default function ReimbursementManagementView(): JSX.Element {
   const { id: escrowAddress } = useParams();
-  const { wallet } = useAztec();
+  const { account, viewOnlyAccount } = useAztec();
 
   const [addingRecipient, setAddingRecipient] = useState<boolean>(false);
   const [escrowData, setEscrowData] = useState<any>({});
@@ -59,12 +59,12 @@ export default function ReimbursementManagementView(): JSX.Element {
     amount: number,
     _name: string
   ) => {
-    if (!escrowAddress || !wallet) return;
+    if (!account || !escrowAddress) return;
     try {
       setAddingRecipient(true);
       const escrowContract = await ZImburseEscrowContract.at(
         AztecAddress.fromString(escrowAddress),
-        wallet
+        account
       );
       await escrowContract.methods
         .give_recurring_entitlement(AztecAddress.fromString(address), amount, 2)
@@ -81,13 +81,16 @@ export default function ReimbursementManagementView(): JSX.Element {
   };
 
   const fetchEscrowInfo = async () => {
-    if (!escrowAddress || !wallet) return;
+    if (!account || !escrowAddress || !viewOnlyAccount) return;
     const escrowContract = await ZImburseEscrowContract.at(
       AztecAddress.fromString(escrowAddress),
-      wallet
+      account
     );
 
-    const titleBytes = await escrowContract.methods.get_title().simulate();
+    const titleBytes = await escrowContract
+      .withWallet(viewOnlyAccount)
+      .methods.get_title()
+      .simulate();
     const title = Buffer.from(new Uint8Array(titleBytes.map(Number))).toString(
       'utf8'
     );
@@ -95,11 +98,16 @@ export default function ReimbursementManagementView(): JSX.Element {
 
     // fetch escrow recipients
     // NOTE: Only fetches linode for now while only verifier is Linode contract level
-    // const recipients = await escrowContract.methods
-    //   .get_recurring_entitlements_by_verifier(wallet.getAddress(), 2, 0)
-    //   .simulate();
     const recipients = await escrowContract.methods
-      .get_recurring_entitlements_by_verifier(wallet.getAddress(), 2, 0)
+      .view_entitlements(
+        0,
+        AztecAddress.fromString(
+          '0x0e31aeec96c8fab6541c47a04d3b9be16d38e6eb620c6dceeeb7903325217dd8'
+        ),
+        { _is_some: false, _value: AztecAddress.ZERO },
+        { _is_some: false, _value: 0 },
+        { _is_some: false, _value: false }
+      )
       .simulate();
     console.log('Recipients: ', recipients);
     setFetchingEscrow(false);
@@ -109,7 +117,7 @@ export default function ReimbursementManagementView(): JSX.Element {
     (async () => {
       await fetchEscrowInfo();
     })();
-  }, [escrowAddress, wallet]);
+  }, [account, escrowAddress]);
 
   return (
     <AppLayout>

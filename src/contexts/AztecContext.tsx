@@ -5,17 +5,23 @@ import {
   ReactNode,
   useEffect,
 } from 'react';
-import { createPXEClient, waitForPXE } from '@aztec/aztec.js';
+import {
+  AccountWalletWithSecretKey,
+  createPXEClient,
+  waitForPXE,
+} from '@aztec/aztec.js';
 import { DEFAULT_PXE_URL } from '../utils/constants';
 import { ShieldswapWalletSdk } from '@shieldswap/wallet-sdk';
 import { useAccount } from '@shieldswap/wallet-sdk/react';
 import { Eip1193Account } from '@shieldswap/wallet-sdk/eip1193';
+import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
 
 type AztecContextProps = {
   account: Eip1193Account | undefined;
   connecting: boolean;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => Promise<void>;
+  viewOnlyAccount: AccountWalletWithSecretKey | undefined;
 };
 
 const DEFAULT_AZTEC_CONTEXT_PROPS = {
@@ -23,6 +29,7 @@ const DEFAULT_AZTEC_CONTEXT_PROPS = {
   connecting: false,
   connectWallet: async () => {},
   disconnectWallet: async () => {},
+  viewOnlyAccount: undefined,
 };
 
 const AztecContext = createContext<AztecContextProps>(
@@ -34,6 +41,8 @@ const wallet = new ShieldswapWalletSdk(async () => {
   await waitForPXE(pxe);
   return pxe;
 });
+
+const [viewOnlyAccount] = await getInitialTestAccountsWallets(pxe);
 
 export const AztecProvider = ({ children }: { children: ReactNode }) => {
   const account = useAccount(wallet);
@@ -60,6 +69,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         connecting,
         connectWallet,
         disconnectWallet,
+        viewOnlyAccount,
       }}
     >
       {children}

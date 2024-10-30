@@ -32,8 +32,8 @@ dependencies:
     specifier: ^0.0.2
     version: 0.0.2(vite@5.4.1)
   '@shieldswap/wallet-sdk':
-    specifier: 0.57.0-alpha.2
-    version: 0.57.0-alpha.2(@types/react@18.3.3)(react@18.3.1)(typescript@5.5.3)
+    specifier: 0.57.0-alpha.3
+    version: 0.57.0-alpha.3(@types/react@18.3.3)(react@18.3.1)(typescript@5.5.3)
   buffer:
     specifier: ^6.0.3
     version: 6.0.3
@@ -1455,8 +1455,8 @@ packages:
       - rollup
     dev: false
 
-  /@shieldswap/wallet-sdk@0.57.0-alpha.2(@types/react@18.3.3)(react@18.3.1)(typescript@5.5.3):
-    resolution: {integrity: sha512-UW+KwGR4yqaNomJe0qAMyNHUlYMZrKQIWS/7qtRM10Lt8yNQviXCojLTAlOE95VxWuShi4vpgWm4Pve/M9XzOg==}
+  /@shieldswap/wallet-sdk@0.57.0-alpha.3(@types/react@18.3.3)(react@18.3.1)(typescript@5.5.3):
+    resolution: {integrity: sha512-fArdkc+6emF7AagMXrkC62TF7Ny4C9xlYocLpL6v3WYYWj4wQyeFMnYoUvSXdAE8J5xaON6y8G58KzzEs9FrGg==}
     peerDependencies:
       react: ^18.0.0
     peerDependenciesMeta:

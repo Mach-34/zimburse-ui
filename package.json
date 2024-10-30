@@ -16,7 +16,7 @@
     "@aztec/noir-contracts.js": "0.57.0",
     "@mach-34/zimburse": "../z-imburse",
     "@shieldswap/vite-plugin-aztec": "^0.0.2",
-    "@shieldswap/wallet-sdk": "0.57.0-alpha.2",
+    "@shieldswap/wallet-sdk": "0.57.0-alpha.3",
     "buffer": "^6.0.3",
     "lucide-react": "^0.446.0",
     "react": "^18.3.1",

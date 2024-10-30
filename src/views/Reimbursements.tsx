@@ -3,7 +3,7 @@ import google from '../assets/google.svg';
 import { Upload } from 'lucide-react';
 import AppLayout from '../layouts/AppLayout';
 import FileInput from '../components/FileInput';
-import { makeLinodeInputs } from '@mach-34/zimburse/dist/linode';
+// import { makeLinodeInputs } from '@mach-34/zimburse/dist/linode';
 
 const hasEscrows = true;
 
@@ -53,7 +53,7 @@ export default function ReimbursementsView(): JSX.Element {
     if (!emailFile) return;
     const arrayBuff = await emailFile.arrayBuffer();
     const buffer = Buffer.from(arrayBuff);
-    const inputs = await makeLinodeInputs(buffer);
+    // const inputs = await makeLinodeInputs(buffer);
     console.log('Inputs: ', inputs);
   };
 

@@ -23,7 +23,7 @@ type EscrowGroup = {
 };
 
 export default function ReimbursementSetupView(): JSX.Element {
-  const { wallet } = useAztec();
+  const { account, viewOnlyAccount } = useAztec();
 
   const [addingGroup, setAddingGroup] = useState<boolean>(false);
   const [fetchingGroups, setFetchingGroups] = useState<boolean>(true);
@@ -32,11 +32,11 @@ export default function ReimbursementSetupView(): JSX.Element {
   const [showGroupModal, setShowGroupModal] = useState<boolean>(false);
 
   const addEscrowGroup = async (name: string) => {
-    if (!wallet) return;
+    if (!account) return;
     setAddingGroup(true);
     try {
       const escrow = await ZImburseEscrowContract.deploy(
-        wallet,
+        account,
         AztecAddress.fromString(ESCROW_REGISTRY_CONTRACT),
         AztecAddress.fromString(USDC_CONTRACT),
         name
@@ -47,12 +47,12 @@ export default function ReimbursementSetupView(): JSX.Element {
       // registry contract
       const registry = await ZImburseRegistryContract.at(
         AztecAddress.fromString(ESCROW_REGISTRY_CONTRACT),
-        wallet
+        account
       );
 
       // register deployed escrow into registry
       await registry
-        .withWallet(wallet)
+        .withWallet(account)
         .methods.register_escrow(escrow.address)
         .send()
         .wait();
@@ -72,41 +72,49 @@ export default function ReimbursementSetupView(): JSX.Element {
   };
 
   const fetchEscrowGroups = async () => {
-    if (!wallet) return;
-    const escrows: Array<EscrowGroup> = [];
-    const registry = await ZImburseRegistryContract.at(
-      AztecAddress.fromString(ESCROW_REGISTRY_CONTRACT),
-      wallet
-    );
-    const escrowGroups = await registry.methods
-      .get_managed_escrows(0)
-      .simulate();
-
-    const numEscrows = Number(escrowGroups[0].len);
-
-    for (let i = 0; i < numEscrows; i++) {
-      const escrowAddress = escrowGroups[0].storage[i];
-      const escrowContract = await ZImburseEscrowContract.at(
-        escrowAddress,
-        wallet
+    if (!account || !viewOnlyAccount) return;
+    try {
+      const escrows: Array<EscrowGroup> = [];
+      const registry = await ZImburseRegistryContract.at(
+        AztecAddress.fromString(ESCROW_REGISTRY_CONTRACT),
+        account
       );
-      const titleBytes = await escrowContract.methods.get_title().simulate();
-      const title = Buffer.from(
-        new Uint8Array(titleBytes.map(Number))
-      ).toString('utf8');
+      const escrowGroups = await registry.methods
+        .get_managed_escrows(0)
+        .simulate();
 
-      escrows.push({ id: escrowAddress, title });
+      const numEscrows = Number(escrowGroups[0].len);
+      for (let i = 0; i < numEscrows; i++) {
+        const escrowAddress = escrowGroups[0].storage[i];
+        const escrowContract = await ZImburseEscrowContract.at(
+          escrowAddress,
+          account
+        );
+        const titleBytes = await escrowContract
+          .withWallet(viewOnlyAccount)
+          .methods.get_title()
+          .simulate();
+        const title = Buffer.from(
+          new Uint8Array(titleBytes.map(Number))
+        ).toString('utf8');
+        escrows.push({
+          id: escrowAddress,
+          title,
+        });
+      }
+      setGroups(escrows);
+    } catch (err) {
+      console.log('Error: ', err);
     }
-    setGroups(escrows);
   };
 
   useEffect(() => {
-    if (!wallet) return;
+    if (!account) return;
     (async () => {
       await fetchEscrowGroups();
       setFetchingGroups(false);
     })();
-  }, [wallet]);
+  }, [account]);
 
   return (
     <AppLayout>

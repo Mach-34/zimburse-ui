@@ -137,7 +137,7 @@ export class ZImburseRegistryContract extends ContractBase {
   }
 
 
-  public static get notes(): ContractNotes<'AddressNote' | 'TransparentNote' | 'TokenNote' | 'RecurringEntitlementNote' | 'ParticipantNote'> {
+  public static get notes(): ContractNotes<'AddressNote' | 'TransparentNote' | 'TokenNote' | 'EntitlementNote' | 'ParticipantNote'> {
     return {
       AddressNote: {
         id: new NoteSelector(2232136525),
@@ -148,13 +148,13 @@ export class ZImburseRegistryContract extends ContractBase {
       TokenNote: {
         id: new NoteSelector(2350566847),
       },
-      RecurringEntitlementNote: {
-        id: new NoteSelector(3639716131),
+      EntitlementNote: {
+        id: new NoteSelector(4112046478),
       },
       ParticipantNote: {
         id: new NoteSelector(3017618054),
       }
-    } as ContractNotes<'AddressNote' | 'TransparentNote' | 'TokenNote' | 'RecurringEntitlementNote' | 'ParticipantNote'>;
+    } as ContractNotes<'AddressNote' | 'TransparentNote' | 'TokenNote' | 'EntitlementNote' | 'ParticipantNote'>;
   }
 
 
