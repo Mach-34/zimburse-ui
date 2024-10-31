@@ -8,18 +8,23 @@ import AddRecipientModal from './components/AddRecipientModal';
 import RecipientDataModal from './components/RecipientDataModal';
 import AppLayout from '../../layouts/AppLayout';
 import { toast } from 'react-toastify';
-import { ZImburseEscrowContract } from '../../artifacts';
+import {
+  ZImburseEscrowContract,
+  ZImburseRegistryContract,
+} from '../../artifacts';
 import { useAztec } from '../../contexts/AztecContext';
 import { useParams } from 'react-router-dom';
 import { AztecAddress } from '@aztec/circuits.js';
-import { truncateAddress } from '../../utils';
+import { parseStringBytes, truncateAddress } from '../../utils';
 import Loader from '../../components/Loader';
+import useEscrowContract from '../../hooks/useEscrowContract';
+import useRegistryContract from '../../hooks/useRegistryContract';
 
 const POLICIES = [
   {
     activeY: 'Active: Y ($X,XXX)',
     paidOut: 'Paid Out: $ZZZ,ZZZ',
-    title: 'AWS Hosting',
+    title: 'Linode Hosting',
     type: 'Recurring',
   },
   {
@@ -27,10 +32,10 @@ const POLICIES = [
     from: 'From: anywhere',
     limit: 'Limit: $XX.XX',
     paidOut: 'Paid Out: $ZZZ,ZZZ',
-    title: 'EthDenver Grantee Dinner',
+    title: 'United Flight Receipt',
     to: 'To: 123 Main St, Denver, CO 80223',
     twoWay: 'Two-way: Yes',
-    type: 'Spot (November 11 - November 11)',
+    type: 'Spot',
   },
 ];
 
@@ -39,9 +44,14 @@ type Recipient = {
   name: string;
 };
 
+const { VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT } =
+  import.meta.env;
+
 export default function ReimbursementManagementView(): JSX.Element {
   const { id: escrowAddress } = useParams();
-  const { account, viewOnlyAccount } = useAztec();
+  const { account, registryAdmin, viewOnlyAccount } = useAztec();
+  const escrowContract = useEscrowContract(escrowAddress!);
+  const registryContract = useRegistryContract(ESCROW_REGISTRY_CONTRACT);
 
   const [addingRecipient, setAddingRecipient] = useState<boolean>(false);
   const [escrowData, setEscrowData] = useState<any>({});
@@ -54,26 +64,27 @@ export default function ReimbursementManagementView(): JSX.Element {
     useState<boolean>(false);
   const [showTxModal, setShowTxModal] = useState<boolean>(false);
 
-  const addRecipient = async (
-    address: string,
-    amount: number,
-    _name: string
-  ) => {
-    if (!account || !escrowAddress) return;
+  const addRecipient = async (address: string, name: string) => {
+    if (!account || !escrowAddress || !registryAdmin || !registryContract)
+      return;
     try {
       setAddingRecipient(true);
-      const escrowContract = await ZImburseEscrowContract.at(
-        AztecAddress.fromString(escrowAddress),
-        account
-      );
-      await escrowContract.methods
-        .give_recurring_entitlement(AztecAddress.fromString(address), amount, 2)
+
+      await registryContract
+        .withWallet(registryAdmin)
+        .methods.check_and_register_participant(
+          AztecAddress.fromString(address),
+          name,
+          AztecAddress.fromString(escrowAddress)
+        )
         .send()
         .wait();
-      setRecipients((prev) => [...prev, { address, name: 'TODO' }]);
+
+      setRecipients((prev) => [...prev, { address, name: name }]);
       toast.success('Added recipient to escrow!');
-    } catch {
+    } catch (err) {
       toast.error('Error occurred adding recipient.');
+      console.log('Error: ', err);
     } finally {
       setAddingRecipient(false);
       setShowAddRecipientModal(false);
@@ -81,11 +92,14 @@ export default function ReimbursementManagementView(): JSX.Element {
   };
 
   const fetchEscrowInfo = async () => {
-    if (!account || !escrowAddress || !viewOnlyAccount) return;
-    const escrowContract = await ZImburseEscrowContract.at(
-      AztecAddress.fromString(escrowAddress),
-      account
-    );
+    if (
+      !account ||
+      !escrowContract ||
+      !registryAdmin ||
+      !registryContract ||
+      !viewOnlyAccount
+    )
+      return;
 
     const titleBytes = await escrowContract
       .withWallet(viewOnlyAccount)
@@ -96,20 +110,29 @@ export default function ReimbursementManagementView(): JSX.Element {
     );
     setEscrowData({ title });
 
-    // fetch escrow recipients
-    // NOTE: Only fetches linode for now while only verifier is Linode contract level
-    const recipients = await escrowContract.methods
-      .view_entitlements(
-        0,
-        AztecAddress.fromString(
-          '0x0e31aeec96c8fab6541c47a04d3b9be16d38e6eb620c6dceeeb7903325217dd8'
-        ),
-        { _is_some: false, _value: AztecAddress.ZERO },
-        { _is_some: false, _value: 0 },
-        { _is_some: false, _value: false }
-      )
+    const participants = await registryContract
+      .withWallet(registryAdmin)
+      .methods.get_participants(escrowContract.address, 0)
       .simulate();
-    console.log('Recipients: ', recipients);
+
+    setRecipients(
+      participants[0].storage
+        .filter(
+          (participant: any) =>
+            participant.address.toString() !== AztecAddress.ZERO.toString()
+        )
+        .map((participant: any) => {
+          let name = participant.name[0].toString();
+          if (participant.name[1] !== 0n) {
+            name.concat(participant.name[1]);
+          }
+          name = Buffer.from(BigInt(name).toString(16), 'hex').toString('utf8');
+          return {
+            address: participant.address.toString(),
+            name,
+          };
+        })
+    );
     setFetchingEscrow(false);
   };
 
@@ -117,7 +140,7 @@ export default function ReimbursementManagementView(): JSX.Element {
     (async () => {
       await fetchEscrowInfo();
     })();
-  }, [account, escrowAddress]);
+  }, [account, escrowContract, registryContract]);
 
   return (
     <AppLayout>
@@ -152,29 +175,27 @@ export default function ReimbursementManagementView(): JSX.Element {
                 </div>
               </div>
               <div className='basis-7/12 bg-zimburseGray flex flex-col items-end min-h-0 p-4'>
-                <button
+                {/* <button
                   className='bg-zimburseBlue ml-auto px-2 py-1'
                   onClick={() => setShowPolicyModal(true)}
                 >
                   Add Policy
-                </button>
+                </button> */}
                 <div className='mt-4 overflow-y-auto w-full'>
-                  {[...POLICIES, ...POLICIES, ...POLICIES].map(
-                    (policy, index) => (
-                      <Policy
-                        activeY={policy.activeY}
-                        from={policy.from}
-                        key={index}
-                        limit={policy.limit}
-                        paidOut={policy.paidOut}
-                        style={{ marginTop: '8px' }}
-                        title={policy.title}
-                        to={policy.to}
-                        twoWay={policy.twoWay}
-                        type={policy.type}
-                      />
-                    )
-                  )}
+                  {POLICIES.map((policy, index) => (
+                    <Policy
+                      activeY={policy.activeY}
+                      from={policy.from}
+                      key={index}
+                      limit={policy.limit}
+                      paidOut={policy.paidOut}
+                      style={{ marginTop: '8px' }}
+                      title={policy.title}
+                      to={policy.to}
+                      twoWay={policy.twoWay}
+                      type={policy.type}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
@@ -238,6 +259,7 @@ export default function ReimbursementManagementView(): JSX.Element {
           open={showDepositModal}
         />
         <RecipientDataModal
+          escrowContract={escrowContract}
           onClose={() => setSelectedRecipient(null)}
           open={!!selectedRecipient}
           recipient={selectedRecipient ?? {}}

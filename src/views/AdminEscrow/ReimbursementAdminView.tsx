@@ -11,6 +11,7 @@ import { useAztec } from '../../contexts/AztecContext';
 import { toast } from 'react-toastify';
 import { AztecAddress } from '@aztec/circuits.js';
 import Loader from '../../components/Loader';
+import useRegistryContract from '../../hooks/useRegistryContract';
 
 const {
   VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT,
@@ -24,16 +25,17 @@ type EscrowGroup = {
 
 export default function ReimbursementSetupView(): JSX.Element {
   const { account, viewOnlyAccount } = useAztec();
+  const registryContract = useRegistryContract(ESCROW_REGISTRY_CONTRACT);
 
-  const [addingGroup, setAddingGroup] = useState<boolean>(false);
+  const [addingGroup, setAddingGroup] = useState<number>(0);
   const [fetchingGroups, setFetchingGroups] = useState<boolean>(true);
   const [groups, setGroups] = useState<Array<EscrowGroup>>([]);
   const [selectedGroup, setSelectedGroup] = useState<EscrowGroup | null>(null);
   const [showGroupModal, setShowGroupModal] = useState<boolean>(false);
 
   const addEscrowGroup = async (name: string) => {
-    if (!account) return;
-    setAddingGroup(true);
+    if (!account || !registryContract) return;
+    setAddingGroup(1);
     try {
       const escrow = await ZImburseEscrowContract.deploy(
         account,
@@ -44,14 +46,10 @@ export default function ReimbursementSetupView(): JSX.Element {
         .send()
         .deployed();
 
-      // registry contract
-      const registry = await ZImburseRegistryContract.at(
-        AztecAddress.fromString(ESCROW_REGISTRY_CONTRACT),
-        account
-      );
+      setAddingGroup(2);
 
       // register deployed escrow into registry
-      await registry
+      await registryContract
         .withWallet(account)
         .methods.register_escrow(escrow.address)
         .send()
@@ -66,20 +64,16 @@ export default function ReimbursementSetupView(): JSX.Element {
       console.log('Error: ', err);
       toast.error('Error occurred creating group.');
     } finally {
-      setAddingGroup(false);
+      setAddingGroup(0);
       setShowGroupModal(false);
     }
   };
 
   const fetchEscrowGroups = async () => {
-    if (!account || !viewOnlyAccount) return;
+    if (!account || !registryContract || !viewOnlyAccount) return;
     try {
       const escrows: Array<EscrowGroup> = [];
-      const registry = await ZImburseRegistryContract.at(
-        AztecAddress.fromString(ESCROW_REGISTRY_CONTRACT),
-        account
-      );
-      const escrowGroups = await registry.methods
+      const escrowGroups = await registryContract.methods
         .get_managed_escrows(0)
         .simulate();
 
@@ -103,18 +97,17 @@ export default function ReimbursementSetupView(): JSX.Element {
         });
       }
       setGroups(escrows);
+      setFetchingGroups(false);
     } catch (err) {
       console.log('Error: ', err);
     }
   };
 
   useEffect(() => {
-    if (!account) return;
     (async () => {
       await fetchEscrowGroups();
-      setFetchingGroups(false);
     })();
-  }, [account]);
+  }, [account, registryContract]);
 
   return (
     <AppLayout>
@@ -196,7 +189,7 @@ export default function ReimbursementSetupView(): JSX.Element {
           </div>
         )}
         <AddGroupModal
-          loading={addingGroup}
+          addingGroup={addingGroup}
           onClose={() => setShowGroupModal(false)}
           onFinish={addEscrowGroup}
           open={showGroupModal}

@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import google from '../assets/google.svg';
 import { Upload } from 'lucide-react';
 import AppLayout from '../layouts/AppLayout';
 import FileInput from '../components/FileInput';
+import { ZImburseEscrowContract } from '../artifacts';
+import { AztecAddress } from '@aztec/circuits.js';
+import { useAztec } from '../contexts/AztecContext';
 // import { makeLinodeInputs } from '@mach-34/zimburse/dist/linode';
 
 const hasEscrows = true;
@@ -45,17 +48,29 @@ const REIMBURSEMENTS: Array<Reimbursement> = [
 ];
 
 export default function ReimbursementsView(): JSX.Element {
+  const { account } = useAztec();
   const [emailFile, setEmailFile] = useState<File | null>(null);
   const [selectedReimbursement, setSelectedReimbursement] =
     useState<Reimbursement | null>(null);
+
+  const fetchEscrows = async () => {
+    if (!account) return;
+    // const escrowContract = await ZImburseEscrowContract.at(
+    //   AztecAddress.fromString(escrowAddress),
+    //   account
+    // );
+  };
 
   const submitClaim = async () => {
     if (!emailFile) return;
     const arrayBuff = await emailFile.arrayBuffer();
     const buffer = Buffer.from(arrayBuff);
     // const inputs = await makeLinodeInputs(buffer);
-    console.log('Inputs: ', inputs);
   };
+
+  useEffect(() => {
+    fetchEscrows();
+  }, []);
 
   return (
     <AppLayout>
