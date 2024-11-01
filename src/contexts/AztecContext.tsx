@@ -28,9 +28,10 @@ type AztecContextProps = {
   connecting: boolean;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => Promise<void>;
+  fetchingTokenBalance: boolean;
   registryAdmin: AccountWalletWithSecretKey | undefined;
-  setTokenBalance: Dispatch<SetStateAction<number>>;
-  tokenBalance: number;
+  setTokenBalance: Dispatch<SetStateAction<TokenBalance>>;
+  tokenBalance: TokenBalance;
   tokenContract: TokenContract | undefined;
   viewOnlyAccount: AccountWalletWithSecretKey | undefined;
 };
@@ -46,9 +47,10 @@ const DEFAULT_AZTEC_CONTEXT_PROPS = {
   connecting: false,
   connectWallet: async () => {},
   disconnectWallet: async () => {},
+  fetchingTokenBalance: false,
   registryAdmin: undefined,
-  setTokenBalance: (() => {}) as Dispatch<SetStateAction<number>>,
-  tokenBalance: 0,
+  setTokenBalance: (() => {}) as Dispatch<SetStateAction<TokenBalance>>,
+  tokenBalance: { private: 0, public: 0 },
   tokenContract: undefined,
   viewOnlyAccount: undefined,
 };
@@ -56,6 +58,11 @@ const DEFAULT_AZTEC_CONTEXT_PROPS = {
 const AztecContext = createContext<AztecContextProps>(
   DEFAULT_AZTEC_CONTEXT_PROPS
 );
+
+type TokenBalance = {
+  private: number;
+  public: number;
+};
 
 const pxe = createPXEClient(DEFAULT_PXE_URL);
 const wallet = new ShieldswapWalletSdk(async () => {
@@ -74,7 +81,12 @@ const registryAdmin = await getSchnorrAccount(
 export const AztecProvider = ({ children }: { children: ReactNode }) => {
   const account = useAccount(wallet);
   const [connecting, setConnecting] = useState<boolean>(false);
-  const [tokenBalance, setTokenBalance] = useState<number>(0);
+  const [fetchingTokenBalance, setFetchingTokenBalance] =
+    useState<boolean>(false);
+  const [tokenBalance, setTokenBalance] = useState<TokenBalance>({
+    private: 0,
+    public: 0,
+  });
   const [tokenContract, setTokenContract] = useState<TokenContract | undefined>(
     undefined
   );
@@ -100,12 +112,23 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         AztecAddress.fromString(USDC_CONTRACT),
         account
       );
-      const balance = await contract
+      setFetchingTokenBalance(true);
+      const publicBalance = await contract
         .withWallet(viewOnlyAccount)
         .methods.balance_of_public(account.getAddress())
         .simulate();
-      setTokenBalance(Number(balance));
+
+      const privateBalance = await contract
+        .withWallet(viewOnlyAccount)
+        .methods.balance_of_private(account.getAddress())
+        .simulate();
+
+      setTokenBalance({
+        private: Number(privateBalance),
+        public: Number(publicBalance),
+      });
       setTokenContract(contract);
+      setFetchingTokenBalance(false);
     })();
   }, [account, viewOnlyAccount]);
 
@@ -116,6 +139,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         connecting,
         connectWallet,
         disconnectWallet,
+        fetchingTokenBalance,
         registryAdmin,
         setTokenBalance,
         tokenBalance,

@@ -13,6 +13,7 @@ import {
   makeLinodeInputs,
   formatRedeemLinode,
 } from '@mach-34/zimburse/dist/src/email_inputs/linode';
+import { addPendingShieldNoteToPXE } from '@mach-34/zimburse/dist/src/contract_drivers/notes';
 import { toast } from 'react-toastify';
 import { computeSecretHash } from '@aztec/aztec.js';
 
@@ -24,11 +25,13 @@ type Entitlement = {
   title: string;
 };
 
-const { VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT } =
-  import.meta.env;
+const {
+  VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT,
+  VITE_APP_USDC_CONTRACT: USDC_CONTRACT,
+} = import.meta.env;
 
 export default function ReimbursementsView(): JSX.Element {
-  const { account } = useAztec();
+  const { account, tokenContract } = useAztec();
   const registryContract = useRegistryContract(ESCROW_REGISTRY_CONTRACT);
 
   const [emailFile, setEmailFile] = useState<File | null>(null);
@@ -84,7 +87,7 @@ export default function ReimbursementsView(): JSX.Element {
   };
 
   const submitClaim = async () => {
-    if (!account || !emailFile) return;
+    if (!account || !emailFile || !tokenContract) return;
     const arrayBuff = await emailFile.arrayBuffer();
     const buffer = Buffer.from(arrayBuff);
     try {
@@ -101,10 +104,27 @@ export default function ReimbursementsView(): JSX.Element {
       const secret = Fr.random();
       const secretHash = computeSecretHash(secret);
 
-      await escrowContract.methods
+      // hardcode amount to 2200 for now
+      const amount = 2200;
+
+      const receipt = await escrowContract.methods
         .reimburse_linode_recurring(formattedInputs, secretHash)
         .send()
         .wait();
+
+      //   await addPendingShieldNoteToPXE(
+      //   account.,
+      //   USDC_CONTRACT,
+      //   amount,
+      //   secretHash,
+      //   receipt.txHash
+      // );
+
+      // await tokenContract.methods
+      //   .redeem_shield(account.getAddress(), amount, secret)
+      //   .send()
+      //   .wait();
+
       toast.success('Successfully redeemed Linode entitlement!');
     } catch (err) {
       console.log('Error: ', err);
@@ -124,7 +144,7 @@ export default function ReimbursementsView(): JSX.Element {
     <AppLayout>
       <div className='text-center text-3xl'>Your Z-Imburse Escrows</div>
       {fetchingEscrows ? (
-        <div className='flex flex-col gap-2 items-center justify-center h-full'>
+        <div className='flex gap-2 items-center justify-center h-full'>
           <div className='text-2xl'>Fetching escrows</div>
           <Loader size={24} />
         </div>

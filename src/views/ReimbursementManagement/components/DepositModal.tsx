@@ -48,7 +48,10 @@ export default function DepositModal({
         ...prev,
         usdcBalance: prev.usdcBalance + depositAmt,
       }));
-      setTokenBalance((prev) => prev - depositAmt);
+      setTokenBalance((prev) => ({
+        ...prev,
+        public: prev.public - depositAmt,
+      }));
       toast.success(`Succefully deposited ${formatNumber(depositAmt, 0)} USDC`);
     } catch (err) {
       console.log('Err: ', err);
@@ -75,7 +78,7 @@ export default function DepositModal({
         </div>
         <div className='flex flex-col gap-8 items-center'>
           <div className='text-4xl'>
-            Your USDC Balance: ${formatNumber(tokenBalance, 0)}
+            Your USDC Balance: ${formatNumber(tokenBalance.public, 0)}
           </div>
           <div className='flex gap-4 items-center text-xl'>
             <div>Depositing: </div>

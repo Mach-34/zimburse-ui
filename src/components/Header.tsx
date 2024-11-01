@@ -11,6 +11,7 @@ export default function Header(): JSX.Element {
     connectWallet,
     connecting,
     disconnectWallet,
+    fetchingTokenBalance,
     registryAdmin,
     setTokenBalance,
     tokenBalance,
@@ -31,7 +32,7 @@ export default function Header(): JSX.Element {
         .methods.mint_public(account.getAddress(), 10000)
         .send()
         .wait();
-      setTokenBalance((prev) => prev + 10000);
+      setTokenBalance((prev) => ({ ...prev, public: prev.public + 10000 }));
       toast.success('Successfully minted 10,000 USDC');
     } catch (err) {
       console.log('Error: ', err);
@@ -53,18 +54,34 @@ export default function Header(): JSX.Element {
 
   return (
     <div className='flex gap-4 items-center justify-end py-5 px-10'>
-      {tokenContract && (
-        <>
-          <button
-            className='flex gap-2 items-center rounded-full p-1 px-2'
-            onClick={() => mintUsdc()}
-          >
-            {minting ? 'Minting USDC...' : 'Mint USDC'}
-            {minting && <Loader size={18} />}
-          </button>
-          <div>USDC Balance {formatNumber(tokenBalance, 0)}</div>
-        </>
-      )}
+      {account &&
+        (fetchingTokenBalance ? (
+          <div className='flex gap-2 items-center mr-8'>
+            <div className='text-sm'>Fethcing token balances...</div>
+            <Loader size={16} />
+          </div>
+        ) : (
+          <>
+            <button
+              className='flex gap-2 items-center rounded-full p-1 px-2'
+              onClick={() => mintUsdc()}
+            >
+              {minting ? 'Minting USDC...' : 'Mint USDC'}
+              {minting && <Loader size={18} />}
+            </button>
+            <div className='flex gap-2 items-center'>
+              <div>USDC Balance</div>
+              <div>
+                <div className='text-xs'>
+                  Public: ${formatNumber(tokenBalance.public, 0)}
+                </div>
+                <div className='text-xs'>
+                  Private: ${formatNumber(tokenBalance.private, 0)}
+                </div>
+              </div>
+            </div>
+          </>
+        ))}
       <div>
         <button
           className='ml-auto relative'
