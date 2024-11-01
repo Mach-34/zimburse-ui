@@ -1,3 +1,14 @@
+export const formatNumber = (
+    num: number,
+    decimals?: number
+): string | number => {
+    if (!num) return 0;
+    return num.toLocaleString(undefined, {
+        minimumFractionDigits: decimals ?? 2,
+        maximumFractionDigits: decimals ?? 2,
+    });
+};
+
 /** parses a string  */
 export const parseStringBytes = (bytes: bigint[]): string => {
     const index0 = bytes.findIndex(byte => byte === 0n);

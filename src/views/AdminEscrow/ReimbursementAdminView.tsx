@@ -3,10 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AddGroupModal from './components/AddGroupModal';
 import AppLayout from '../../layouts/AppLayout';
-import {
-  ZImburseEscrowContract,
-  ZImburseRegistryContract,
-} from '../../artifacts';
+import { ZImburseEscrowContract } from '../../artifacts';
 import { useAztec } from '../../contexts/AztecContext';
 import { toast } from 'react-toastify';
 import { AztecAddress } from '@aztec/circuits.js';

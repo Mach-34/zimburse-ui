@@ -9,15 +9,12 @@ import { ZImburseEscrowContract } from '../../../artifacts';
 import { AztecAddress } from '@aztec/circuits.js';
 import { toast } from 'react-toastify';
 import Loader from '../../../components/Loader';
+import { ENTITLEMENT_TITLES } from '../../../utils/constants';
 
 type RecipientDataModalProps = {
   escrowContract: ZImburseEscrowContract | null;
   recipient: any;
 } & Omit<ModalProps, 'children'>;
-
-const ENTITLEMENT_TITLES: { [key: number]: string } = {
-  2: 'Linode Billing',
-};
 
 type Entitlement = {
   paidOut?: number;
@@ -48,8 +45,8 @@ export default function RecipientDataModal({
     if (!account || !escrowContract) return;
     setAddingEntilement(true);
     try {
-      // harcode amount to 10 for now
-      const amount = 10;
+      // harcode amount to 1,000,000 for now
+      const amount = 1000000;
 
       // give participant entitlement
       await escrowContract.methods

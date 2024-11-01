@@ -15,7 +15,7 @@ import {
 import { useAztec } from '../../contexts/AztecContext';
 import { useParams } from 'react-router-dom';
 import { AztecAddress } from '@aztec/circuits.js';
-import { parseStringBytes, truncateAddress } from '../../utils';
+import { formatNumber, parseStringBytes, truncateAddress } from '../../utils';
 import Loader from '../../components/Loader';
 import useEscrowContract from '../../hooks/useEscrowContract';
 import useRegistryContract from '../../hooks/useRegistryContract';
@@ -39,6 +39,11 @@ const POLICIES = [
   },
 ];
 
+export type EscrowData = {
+  title: string;
+  usdcBalance: number;
+};
+
 type Recipient = {
   address: string;
   name: string;
@@ -49,13 +54,12 @@ const { VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT } =
 
 export default function ReimbursementManagementView(): JSX.Element {
   const { id: escrowAddress } = useParams();
-  const { account, registryAdmin, viewOnlyAccount } = useAztec();
+  const { account, registryAdmin, tokenContract, viewOnlyAccount } = useAztec();
   const escrowContract = useEscrowContract(escrowAddress!);
   const registryContract = useRegistryContract(ESCROW_REGISTRY_CONTRACT);
 
   const [addingRecipient, setAddingRecipient] = useState<boolean>(false);
-  const [escrowData, setEscrowData] = useState<any>({});
-  const [fetchingEscrow, setFetchingEscrow] = useState<boolean>(true);
+  const [escrowData, setEscrowData] = useState<EscrowData | null>(null);
   const [recipients, setRecipients] = useState<Array<Recipient>>([]);
   const [selectedRecipient, setSelectedRecipient] = useState<any>(null);
   const [showDepositModal, setShowDepositModal] = useState<boolean>(false);
@@ -97,6 +101,7 @@ export default function ReimbursementManagementView(): JSX.Element {
       !escrowContract ||
       !registryAdmin ||
       !registryContract ||
+      !tokenContract ||
       !viewOnlyAccount
     )
       return;
@@ -105,10 +110,16 @@ export default function ReimbursementManagementView(): JSX.Element {
       .withWallet(viewOnlyAccount)
       .methods.get_title()
       .simulate();
+
+    const balance = await tokenContract
+      .withWallet(viewOnlyAccount)
+      .methods.balance_of_public(escrowContract.address)
+      .simulate();
+
     const title = Buffer.from(new Uint8Array(titleBytes.map(Number))).toString(
       'utf8'
     );
-    setEscrowData({ title });
+    setEscrowData({ usdcBalance: Number(balance), title });
 
     const participants = await registryContract
       .withWallet(registryAdmin)
@@ -133,23 +144,28 @@ export default function ReimbursementManagementView(): JSX.Element {
           };
         })
     );
-    setFetchingEscrow(false);
   };
 
   useEffect(() => {
     (async () => {
       await fetchEscrowInfo();
     })();
-  }, [account, escrowContract, registryContract]);
+  }, [
+    account,
+    escrowContract,
+    registryContract,
+    tokenContract,
+    viewOnlyAccount,
+  ]);
 
   return (
     <AppLayout>
       <div className='flex gap-16 h-[80vh]'>
-        {fetchingEscrow ? (
+        {!escrowData ? (
           <>
-            <div className='flex flex-col gap-4 items-center justify-center w-full'>
+            <div className='flex gap-4 items-center justify-center w-full'>
               <div className='text-2xl'>Fetching Escrow Info</div>
-              <Loader size={28} />
+              <Loader size={24} />
             </div>
           </>
         ) : (
@@ -158,7 +174,9 @@ export default function ReimbursementManagementView(): JSX.Element {
               <div>
                 <div className='text-4xl'>{escrowData.title}</div>
                 <div className='flex gap-10 items-center mt-4'>
-                  <div className='text-lg'>Escrow Balance: $XXX,XXX</div>
+                  <div className='text-lg'>
+                    Escrow Balance: ${formatNumber(escrowData.usdcBalance, 0)}
+                  </div>
                   <button
                     className='bg-zimburseWalle flex gap-2 items-center px-2 py-1'
                     onClick={() => setShowDepositModal(true)}
@@ -255,8 +273,11 @@ export default function ReimbursementManagementView(): JSX.Element {
           open={showAddRecipientModal}
         />
         <DepositModal
+          escrowAddress={escrowAddress ?? ''}
+          escrowBalance={escrowData?.usdcBalance ?? 0}
           onClose={() => setShowDepositModal(false)}
           open={showDepositModal}
+          setEscrowData={setEscrowData}
         />
         <RecipientDataModal
           escrowContract={escrowContract}
