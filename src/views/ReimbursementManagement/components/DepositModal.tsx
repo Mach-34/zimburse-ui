@@ -1,14 +1,69 @@
 import { X } from 'lucide-react';
 import Modal, { ModalProps } from '../../../components/Modal';
-import { useState } from 'react';
+import { Dispatch, SetStateAction, useState } from 'react';
+import { useAztec } from '../../../contexts/AztecContext';
+import { formatNumber } from '../../../utils';
+import { AztecAddress } from '@aztec/circuits.js';
+import { toast } from 'react-toastify';
+import Loader from '../../../components/Loader';
+import { EscrowData } from '..';
+import { toUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
 
-type DepositModalProps = Omit<ModalProps, 'children'>;
+type DepositModalProps = {
+  escrowAddress: string;
+  escrowBalance: number;
+  setEscrowData: Dispatch<SetStateAction<EscrowData | null>>;
+} & Omit<ModalProps, 'children'>;
 
 export default function DepositModal({
+  escrowAddress,
+  escrowBalance,
   onClose,
   open,
+  setEscrowData,
 }: DepositModalProps): JSX.Element {
+  const {
+    account,
+    registryAdmin,
+    setTokenBalance,
+    tokenBalance,
+    tokenContract,
+  } = useAztec();
   const [depositAmt, setDepositAmt] = useState<number>(0);
+  const [depositing, setDepositing] = useState<boolean>(false);
+
+  const depositUsdc = async () => {
+    if (!account || !registryAdmin || !tokenContract) return;
+    try {
+      setDepositing(true);
+      await tokenContract.methods
+        .transfer_public(
+          account.getAddress(),
+          AztecAddress.fromString(escrowAddress),
+          toUSDCDecimals(BigInt(depositAmt)),
+          0
+        )
+        .send()
+        .wait();
+      setEscrowData((prev: any) => ({
+        ...prev,
+        usdcBalance: prev.usdcBalance + depositAmt,
+      }));
+      setTokenBalance((prev) => ({
+        ...prev,
+        public: prev.public - depositAmt,
+      }));
+      toast.success(
+        `Succefully deposited ${formatNumber(depositAmt, 0)} USDC in Escrow`
+      );
+    } catch (err) {
+      console.log('Err: ', err);
+      toast.error('Error depositing USDC');
+    } finally {
+      setDepositAmt(0);
+      setDepositing(false);
+    }
+  };
 
   return (
     <Modal height={85} onClose={onClose} open={open} width={80}>
@@ -16,7 +71,9 @@ export default function DepositModal({
         <div>
           <X className='ml-auto' cursor='pointer' onClick={() => onClose()} />
           <div>
-            <div className='text-4xl'>Escrow Balance: $XXX,XXX</div>
+            <div className='text-4xl'>
+              Escrow Balance: ${formatNumber(escrowBalance, 0)}
+            </div>
             <div className='mt-2 text-xl'>
               Active Monthly Entitlements: $xx,xxx.xx
             </div>
@@ -24,7 +81,9 @@ export default function DepositModal({
           </div>
         </div>
         <div className='flex flex-col gap-8 items-center'>
-          <div className='text-4xl'>Your USDC Balance: $X,XXX,XXX.XX</div>
+          <div className='text-4xl'>
+            Your USDC Balance: ${formatNumber(tokenBalance.public, 0)}
+          </div>
           <div className='flex gap-4 items-center text-xl'>
             <div>Depositing: </div>
             <input
@@ -33,8 +92,12 @@ export default function DepositModal({
               value={depositAmt}
             />
           </div>
-          <button className='bg-zimburseBlue w-64' onClick={() => onClose()}>
-            Deposit
+          <button
+            className='bg-zimburseBlue flex gap-4 items-center'
+            onClick={() => depositUsdc()}
+          >
+            {depositing ? 'Depositing' : 'Deposit'}
+            {depositing && <Loader size={18} />}
           </button>
         </div>
       </div>

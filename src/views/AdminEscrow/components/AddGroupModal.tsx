@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Loader from '../../../components/Loader';
 
 type AddGroupModalProps = {
-  loading: boolean;
+  addingGroup: number;
   onFinish: (name: string) => void;
 } & Omit<ModalProps, 'children'>;
 
 export default function AddGroupModal({
-  loading,
+  addingGroup,
   onClose,
   onFinish,
   open,
@@ -17,11 +17,14 @@ export default function AddGroupModal({
   const [name, setName] = useState<string>('');
 
   const buttonText = useMemo(() => {
-    if (loading) {
+    if (addingGroup === 1) {
       return `Deploying ${name} Escrow Contract`;
+    } else if (addingGroup === 2) {
+      return `Adding ${name} to Registry Contract`;
+    } else {
+      return `Deploy ${name || '"Name"'} Escrow Contract`;
     }
-    return `Deploy ${name || '"Name"'} Escrow Contract`;
-  }, [loading, name]);
+  }, [addingGroup, name]);
 
   useEffect(() => {
     setName('');
@@ -48,7 +51,7 @@ export default function AddGroupModal({
             onClick={() => onFinish(name)}
           >
             <div>{buttonText}</div>
-            {loading && (
+            {addingGroup > 0 && (
               <div>
                 <Loader />
               </div>

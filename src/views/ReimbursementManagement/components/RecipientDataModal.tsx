@@ -4,51 +4,107 @@ import { useEffect, useState } from 'react';
 import ConfirmationModal from './ConfirmationModal';
 import Select from '../../../components/Select';
 import { truncateAddress } from '../../../utils';
+import { useAztec } from '../../../contexts/AztecContext';
+import { ZImburseEscrowContract } from '../../../artifacts';
+import { AztecAddress } from '@aztec/circuits.js';
+import { toast } from 'react-toastify';
+import Loader from '../../../components/Loader';
+import { ENTITLEMENT_TITLES } from '../../../utils/constants';
+import { toUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
 
-type RecipientDataModalProps = { recipient: any } & Omit<
-  ModalProps,
-  'children'
->;
+type RecipientDataModalProps = {
+  escrowContract: ZImburseEscrowContract | null;
+  recipient: any;
+} & Omit<ModalProps, 'children'>;
 
-const DUMMY_REIMBURSEMENT = [
-  { paidOut: 'Paid Out: $ZZZ,ZZZ', title: 'Linode Hosting', type: 'Recurring' },
-  { title: 'EthDenver Grantee Dinner', type: 'Spot' },
-];
-
-const ENTITLEMENTS = [
-  'Entitlement 1',
-  'Entitlement 2',
-  'Entitlement 3',
-  'Entitlement 4',
-  'Entitlement 5',
-  'Entitlement 6',
-];
-
-const REIMBURSEMENTS = new Array(5).fill(DUMMY_REIMBURSEMENT).flat();
+type Entitlement = {
+  paidOut?: number;
+  title: string;
+  spot: boolean;
+};
 
 const TABS = ['Historical', 'Active'];
 
 export default function RecipientDataModal({
+  escrowContract,
   recipient,
   onClose,
   open,
 }: RecipientDataModalProps): JSX.Element {
+  const { account, registryAdmin } = useAztec();
+  const [addingEntitlement, setAddingEntilement] = useState<boolean>(false);
   const [deleteId, setDeleteId] = useState<number>(-1);
-  const [reimbursements, setReimbursements] =
-    useState<Array<any>>(REIMBURSEMENTS);
+  const [entitlements, setEntitlements] = useState<Array<Entitlement>>([]);
+  const [fetchingEntitlements, setFetchingEntitlements] =
+    useState<boolean>(true);
   const [selectedEntitlement, setSelectedEntitlement] = useState<
     string | undefined
   >(undefined);
   const [selectedTab] = useState<number>(1);
 
-  const deleteReimbursement = () => {
-    setReimbursements((prev) => prev.filter((_, index) => index !== deleteId));
+  const addEntitlement = async () => {
+    if (!account || !escrowContract) return;
+    setAddingEntilement(true);
+    try {
+      // harcode amount to 1,000,000 for now
+      const amount = 1000;
+
+      // give participant entitlement
+      await escrowContract.methods
+        .give_recurring_entitlement(
+          AztecAddress.fromString(recipient.address),
+          toUSDCDecimals(BigInt(amount)),
+          2
+        )
+        .send()
+        .wait();
+      setEntitlements((prev) => [
+        ...prev,
+        { paidOut: 0, spot: false, title: ENTITLEMENT_TITLES[2] },
+      ]);
+      toast.success(`Entitlement added for recipient: ${recipient.address}`);
+    } catch (err) {
+      toast.error('Error occurred adding entitlement');
+      console.log('Error: ', err);
+    } finally {
+      setAddingEntilement(false);
+    }
+  };
+
+  const deleteEntitlement = () => {
+    setEntitlements((prev) => prev.filter((_, index) => index !== deleteId));
     setDeleteId(-1);
   };
 
+  const fetchEntitlements = async () => {
+    if (!account || !escrowContract) return;
+    const entitlements = await escrowContract.methods
+      .view_entitlements(
+        0,
+        AztecAddress.fromString(recipient.address),
+        { _is_some: false, _value: AztecAddress.fromString(recipient.address) },
+        { _is_some: false, _value: 0 },
+        { _is_some: false, _value: false }
+      )
+      .simulate();
+
+    const { len, storage } = entitlements[0];
+
+    const formattedEntitlements = storage
+      .slice(0, Number(len))
+      .map((entitlement: any) => ({
+        title: ENTITLEMENT_TITLES[entitlement.verifier_id as number],
+      }));
+    setEntitlements(formattedEntitlements);
+    setFetchingEntitlements(false);
+  };
+
   useEffect(() => {
-    setReimbursements(REIMBURSEMENTS);
-  }, [open]);
+    (async () => {
+      if (!recipient || !open) return;
+      await fetchEntitlements();
+    })();
+  }, [open, recipient]);
 
   return (
     <Modal height={90} onClose={onClose} open={open} width={90}>
@@ -64,12 +120,17 @@ export default function RecipientDataModal({
               <div className='mt-16 text-2xl'>Total reimbursed: $xx,xxx.xx</div>
             </div>
             <div className='flex flex-col items-center'>
-              <button className='bg-zimburseBlue mb-4'>Add entitlement</button>
+              <button
+                className='bg-zimburseBlue mb-4'
+                onClick={() => addEntitlement()}
+              >
+                Add entitlement
+              </button>
               <Select
                 onChange={setSelectedEntitlement}
                 placeholder='Select entitlement'
                 selected={selectedEntitlement}
-                options={ENTITLEMENTS}
+                options={['Linode', 'United']}
               />
             </div>
           </div>
@@ -89,26 +150,37 @@ export default function RecipientDataModal({
               ))}
             </div>
             <div className='mt-4 overflow-y-auto'>
-              {reimbursements.map((reimbursement, index) => (
-                <div
-                  className='bg-white flex items-start justify-between mb-6 p-2'
-                  key={index}
-                >
-                  <div>
-                    <div className='text-xl'>{reimbursement.title}</div>
-                    <div className='text-xs'>{reimbursement.type}</div>
-                  </div>
-                  <div className='flex flex-col items-end'>
-                    <div
-                      className='bg-[#FF0000] cursor-pointer flex items-center p-0'
-                      onClick={() => setDeleteId(index)}
-                    >
-                      <X size={16} />
+              {!!entitlements.length ? (
+                entitlements.map((entitlement, index) => (
+                  <div
+                    className='bg-white flex items-start justify-between mb-6 p-2'
+                    key={index}
+                  >
+                    <div>
+                      <div className='text-xl'>{entitlement.title}</div>
+                      <div className='text-xs'>
+                        {entitlement.spot ? 'Spot' : 'Recurring'}
+                      </div>
                     </div>
-                    <div>{reimbursement.paidOut}</div>
+                    <div className='flex flex-col items-end'>
+                      <div
+                        className='bg-[#FF0000] cursor-pointer flex items-center p-0'
+                        onClick={() => setDeleteId(index)}
+                      >
+                        <X size={16} />
+                      </div>
+                      {entitlement.paidOut && <div>Paid out: TODO</div>}
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className='flex gap-4 h-[350px] items-center justify-center text-xl'>
+                  {fetchingEntitlements
+                    ? 'Fethcing entitlements...'
+                    : 'No Entitlements'}
+                  {fetchingEntitlements && <Loader size={24} />}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -116,11 +188,11 @@ export default function RecipientDataModal({
       <ConfirmationModal
         message={
           deleteId >= 0
-            ? `Are you sure you want to delete ${reimbursements[deleteId].title}?`
+            ? `Are you sure you want to nullify ${entitlements[deleteId].title}?`
             : ''
         }
         onClose={() => setDeleteId(-1)}
-        onFinish={deleteReimbursement}
+        onFinish={deleteEntitlement}
         open={deleteId >= 0}
       />
     </Modal>
