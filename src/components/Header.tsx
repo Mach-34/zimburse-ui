@@ -66,7 +66,7 @@ export default function Header(): JSX.Element {
       {account &&
         (fetchingTokenBalance ? (
           <div className='flex gap-2 items-center mr-8'>
-            <div className='text-sm'>Fethcing token balances...</div>
+            <div className='text-sm'>Fetching token balances...</div>
             <Loader size={16} />
           </div>
         ) : (

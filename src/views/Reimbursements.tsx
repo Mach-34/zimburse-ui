@@ -32,7 +32,7 @@ const {
 } = import.meta.env;
 
 export default function ReimbursementsView(): JSX.Element {
-  const { account, tokenContract } = useAztec();
+  const { account, setTokenBalance, tokenContract } = useAztec();
   const registryContract = useRegistryContract(ESCROW_REGISTRY_CONTRACT);
 
   const [emailFile, setEmailFile] = useState<File | null>(null);
@@ -125,6 +125,11 @@ export default function ReimbursementsView(): JSX.Element {
         .redeem_shield(account.getAddress(), amount, secret)
         .send()
         .wait();
+
+      setTokenBalance((prev) => ({
+        ...prev,
+        private: prev.private + Number(amount),
+      }));
 
       toast.success('Successfully redeemed Linode entitlement!');
     } catch (err) {
