@@ -10,6 +10,7 @@ import { AztecAddress } from '@aztec/circuits.js';
 import { toast } from 'react-toastify';
 import Loader from '../../../components/Loader';
 import { ENTITLEMENT_TITLES } from '../../../utils/constants';
+import { toUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
 
 type RecipientDataModalProps = {
   escrowContract: ZImburseEscrowContract | null;
@@ -46,17 +47,21 @@ export default function RecipientDataModal({
     setAddingEntilement(true);
     try {
       // harcode amount to 1,000,000 for now
-      const amount = 1000000;
+      const amount = 1000;
 
       // give participant entitlement
       await escrowContract.methods
         .give_recurring_entitlement(
           AztecAddress.fromString(recipient.address),
-          amount,
+          toUSDCDecimals(BigInt(amount)),
           2
         )
         .send()
         .wait();
+      setEntitlements((prev) => [
+        ...prev,
+        { paidOut: 0, spot: false, title: ENTITLEMENT_TITLES[2] },
+      ]);
       toast.success(`Entitlement added for recipient: ${recipient.address}`);
     } catch (err) {
       toast.error('Error occurred adding entitlement');

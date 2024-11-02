@@ -4,6 +4,7 @@ import { formatNumber, truncateAddress } from '../utils';
 import useOutsideAlerter from '../hooks/useOutsideAlerter';
 import Loader from './Loader';
 import { toast } from 'react-toastify';
+import { toUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
 
 export default function Header(): JSX.Element {
   const {
@@ -23,17 +24,25 @@ export default function Header(): JSX.Element {
 
   useOutsideAlerter(menuRef, () => setShowMenu(false));
 
+  const MINT_AMOUNT = 10000;
+
   const mintUsdc = async () => {
     if (!account || !registryAdmin || !tokenContract) return;
     try {
       setMinting(true);
       await tokenContract
         .withWallet(registryAdmin)
-        .methods.mint_public(account.getAddress(), 10000)
+        .methods.mint_public(
+          account.getAddress(),
+          toUSDCDecimals(BigInt(MINT_AMOUNT))
+        )
         .send()
         .wait();
-      setTokenBalance((prev) => ({ ...prev, public: prev.public + 10000 }));
-      toast.success('Successfully minted 10,000 USDC');
+      setTokenBalance((prev) => ({
+        ...prev,
+        public: prev.public + MINT_AMOUNT,
+      }));
+      toast.success(`Successfully minted ${formatNumber(MINT_AMOUNT, 0)} USDC`);
     } catch (err) {
       console.log('Error: ', err);
       toast.error('Error minting tokens.');

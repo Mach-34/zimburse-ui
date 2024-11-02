@@ -7,6 +7,7 @@ import { AztecAddress } from '@aztec/circuits.js';
 import { toast } from 'react-toastify';
 import Loader from '../../../components/Loader';
 import { EscrowData } from '..';
+import { toUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
 
 type DepositModalProps = {
   escrowAddress: string;
@@ -39,7 +40,7 @@ export default function DepositModal({
         .transfer_public(
           account.getAddress(),
           AztecAddress.fromString(escrowAddress),
-          depositAmt,
+          toUSDCDecimals(BigInt(depositAmt)),
           0
         )
         .send()
@@ -52,11 +53,14 @@ export default function DepositModal({
         ...prev,
         public: prev.public - depositAmt,
       }));
-      toast.success(`Succefully deposited ${formatNumber(depositAmt, 0)} USDC`);
+      toast.success(
+        `Succefully deposited ${formatNumber(depositAmt, 0)} USDC in Escrow`
+      );
     } catch (err) {
       console.log('Err: ', err);
       toast.error('Error depositing USDC');
     } finally {
+      setDepositAmt(0);
       setDepositing(false);
     }
   };

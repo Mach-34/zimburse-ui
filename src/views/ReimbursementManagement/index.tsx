@@ -19,6 +19,7 @@ import { formatNumber, parseStringBytes, truncateAddress } from '../../utils';
 import Loader from '../../components/Loader';
 import useEscrowContract from '../../hooks/useEscrowContract';
 import useRegistryContract from '../../hooks/useRegistryContract';
+import { fromUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
 
 const POLICIES = [
   {
@@ -119,7 +120,7 @@ export default function ReimbursementManagementView(): JSX.Element {
     const title = Buffer.from(new Uint8Array(titleBytes.map(Number))).toString(
       'utf8'
     );
-    setEscrowData({ usdcBalance: Number(balance), title });
+    setEscrowData({ usdcBalance: Number(fromUSDCDecimals(balance)), title });
 
     const participants = await registryContract
       .withWallet(registryAdmin)

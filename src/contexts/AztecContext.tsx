@@ -22,6 +22,7 @@ import { Eip1193Account } from '@shieldswap/wallet-sdk/eip1193';
 import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
 import { getSchnorrAccount } from '@aztec/accounts/schnorr';
 import { TokenContract } from '../artifacts';
+import { fromUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
 
 type AztecContextProps = {
   account: Eip1193Account | undefined;
@@ -124,8 +125,8 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         .simulate();
 
       setTokenBalance({
-        private: Number(privateBalance),
-        public: Number(publicBalance),
+        private: Number(fromUSDCDecimals(privateBalance)),
+        public: Number(fromUSDCDecimals(publicBalance)),
       });
       setTokenContract(contract);
       setFetchingTokenBalance(false);

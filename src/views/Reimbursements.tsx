@@ -4,7 +4,7 @@ import { Upload } from 'lucide-react';
 import AppLayout from '../layouts/AppLayout';
 import FileInput from '../components/FileInput';
 import { ZImburseEscrowContract } from '../artifacts';
-import { AztecAddress, Fr } from '@aztec/circuits.js';
+import { AztecAddress } from '@aztec/circuits.js';
 import { useAztec } from '../contexts/AztecContext';
 import useRegistryContract from '../hooks/useRegistryContract';
 import Loader from '../components/Loader';
@@ -15,7 +15,8 @@ import {
 } from '@mach-34/zimburse/dist/src/email_inputs/linode';
 import { addPendingShieldNoteToPXE } from '@mach-34/zimburse/dist/src/contract_drivers/notes';
 import { toast } from 'react-toastify';
-import { computeSecretHash } from '@aztec/aztec.js';
+import { computeSecretHash, Fr } from '@aztec/aztec.js';
+import { toUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
 
 type Entitlement = {
   id: string;
@@ -104,26 +105,26 @@ export default function ReimbursementsView(): JSX.Element {
       const secret = Fr.random();
       const secretHash = computeSecretHash(secret);
 
-      // hardcode amount to 2200 for now
-      const amount = 2200;
+      // hardcode amount to 22 for now
+      const amount = toUSDCDecimals(22n);
 
       const receipt = await escrowContract.methods
         .reimburse_linode_recurring(formattedInputs, secretHash)
         .send()
         .wait();
 
-      //   await addPendingShieldNoteToPXE(
-      //   account.,
-      //   USDC_CONTRACT,
-      //   amount,
-      //   secretHash,
-      //   receipt.txHash
-      // );
+      await addPendingShieldNoteToPXE(
+        account,
+        AztecAddress.fromString(USDC_CONTRACT),
+        amount,
+        secretHash,
+        receipt.txHash
+      );
 
-      // await tokenContract.methods
-      //   .redeem_shield(account.getAddress(), amount, secret)
-      //   .send()
-      //   .wait();
+      await tokenContract.methods
+        .redeem_shield(account.getAddress(), amount, secret)
+        .send()
+        .wait();
 
       toast.success('Successfully redeemed Linode entitlement!');
     } catch (err) {
