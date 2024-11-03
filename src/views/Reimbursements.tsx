@@ -16,7 +16,10 @@ import {
 import { addPendingShieldNoteToPXE } from '@mach-34/zimburse/dist/src/contract_drivers/notes';
 import { toast } from 'react-toastify';
 import { computeSecretHash, Fr } from '@aztec/aztec.js';
-import { toUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
+import {
+  fromUSDCDecimals,
+  toUSDCDecimals,
+} from '@mach-34/zimburse/dist/src/utils';
 
 type Entitlement = {
   id: string;
@@ -128,7 +131,7 @@ export default function ReimbursementsView(): JSX.Element {
 
       setTokenBalance((prev) => ({
         ...prev,
-        private: prev.private + Number(amount),
+        private: prev.private + Number(fromUSDCDecimals(amount)),
       }));
 
       toast.success('Successfully redeemed Linode entitlement!');

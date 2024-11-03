@@ -8,14 +8,10 @@ import AddRecipientModal from './components/AddRecipientModal';
 import RecipientDataModal from './components/RecipientDataModal';
 import AppLayout from '../../layouts/AppLayout';
 import { toast } from 'react-toastify';
-import {
-  ZImburseEscrowContract,
-  ZImburseRegistryContract,
-} from '../../artifacts';
 import { useAztec } from '../../contexts/AztecContext';
 import { useParams } from 'react-router-dom';
 import { AztecAddress } from '@aztec/circuits.js';
-import { formatNumber, parseStringBytes, truncateAddress } from '../../utils';
+import { formatNumber, truncateAddress } from '../../utils';
 import Loader from '../../components/Loader';
 import useEscrowContract from '../../hooks/useEscrowContract';
 import useRegistryContract from '../../hooks/useRegistryContract';
@@ -41,8 +37,10 @@ const POLICIES = [
 ];
 
 export type EscrowData = {
+  activeMonthly: number;
+  activeSpot: number;
+  escrowed: number;
   title: string;
-  usdcBalance: number;
 };
 
 type Recipient = {
@@ -96,17 +94,9 @@ export default function ReimbursementManagementView(): JSX.Element {
     }
   };
 
-  const fetchEscrowInfo = async () => {
-    if (
-      !account ||
-      !escrowContract ||
-      !registryAdmin ||
-      !registryContract ||
-      !tokenContract ||
-      !viewOnlyAccount
-    )
+  const fetchEscrowData = async (): Promise<EscrowData | undefined> => {
+    if (!account || !escrowContract || !tokenContract || !viewOnlyAccount)
       return;
-
     const titleBytes = await escrowContract
       .withWallet(viewOnlyAccount)
       .methods.get_title()
@@ -120,31 +110,83 @@ export default function ReimbursementManagementView(): JSX.Element {
     const title = Buffer.from(new Uint8Array(titleBytes.map(Number))).toString(
       'utf8'
     );
-    setEscrowData({ usdcBalance: Number(fromUSDCDecimals(balance)), title });
 
+    // fetch spot entitlements
+    // const spotEntitlements = await escrowContract.methods
+    //   .view_entitlements(
+    //     0,
+    //     account.getAddress(),
+    //     { _is_some: false, _value: AztecAddress.ZERO },
+    //     { _is_some: false, _value: 0 },
+    //     { _is_some: true, _value: true }
+    //   )
+    //   .simulate();
+
+    // console.log('Spot entitlements: ', spotEntitlements);
+
+    // fetch recurring entitlement
+    // const recurringEntitlements = await escrowContract.methods
+    //   .view_entitlements(
+    //     0,
+    //     account.getAddress(),
+    //     { _is_some: false, _value: AztecAddress.ZERO },
+    //     { _is_some: false, _value: 0 },
+    //     { _is_some: true, _value: false }
+    //   )
+    //   .simulate();
+    return {
+      activeMonthly: 0,
+      activeSpot: 0,
+      escrowed: Number(fromUSDCDecimals(balance)),
+      title,
+    };
+  };
+
+  const fetchEscrowInfo = async () => {
+    if (
+      !account ||
+      !escrowContract ||
+      !registryAdmin ||
+      !registryContract ||
+      !tokenContract ||
+      !viewOnlyAccount
+    )
+      return;
+
+    const escrowData = await fetchEscrowData();
+    setEscrowData(escrowData!);
+
+    const participants = await fetchParticipants();
+
+    setRecipients(participants);
+  };
+
+  const fetchParticipants = async () => {
+    if (!escrowContract || !registryAdmin || !registryContract) return;
     const participants = await registryContract
       .withWallet(registryAdmin)
       .methods.get_participants(escrowContract.address, 0)
       .simulate();
 
-    setRecipients(
-      participants[0].storage
-        .filter(
-          (participant: any) =>
-            participant.address.toString() !== AztecAddress.ZERO.toString()
-        )
-        .map((participant: any) => {
-          let name = participant.name[0].toString();
-          if (participant.name[1] !== 0n) {
-            name.concat(participant.name[1]);
-          }
-          name = Buffer.from(BigInt(name).toString(16), 'hex').toString('utf8');
-          return {
-            address: participant.address.toString(),
-            name,
-          };
-        })
-    );
+    // const entitlements =
+
+    const formattedParticipants = participants[0].storage
+      .filter(
+        (participant: any) =>
+          participant.address.toString() !== AztecAddress.ZERO.toString()
+      )
+      .map((participant: any) => {
+        let name = participant.name[0].toString();
+        if (participant.name[1] !== 0n) {
+          name.concat(participant.name[1]);
+        }
+        name = Buffer.from(BigInt(name).toString(16), 'hex').toString('utf8');
+        return {
+          address: participant.address.toString(),
+          name,
+        };
+      });
+    return formattedParticipants;
   };
 
   useEffect(() => {
@@ -176,7 +218,7 @@ export default function ReimbursementManagementView(): JSX.Element {
                 <div className='text-4xl'>{escrowData.title}</div>
                 <div className='flex gap-10 items-center mt-4'>
                   <div className='text-lg'>
-                    Escrow Balance: ${formatNumber(escrowData.usdcBalance, 0)}
+                    Escrow Balance: ${formatNumber(escrowData.escrowed, 2)}
                   </div>
                   <button
                     className='bg-zimburseWalle flex gap-2 items-center px-2 py-1'
@@ -187,10 +229,12 @@ export default function ReimbursementManagementView(): JSX.Element {
                   </button>
                 </div>
                 <div className='text-lg'>
-                  Active Monthly Entitlements: $xx,xxx.xx
+                  Active Monthly Entitlements: $
+                  {formatNumber(escrowData.activeMonthly, 0)}
                 </div>
                 <div className='text-lg'>
-                  Active Spot Entitlements: $xx,xxx.xx
+                  Active Spot Entitlements: $
+                  {formatNumber(escrowData.activeSpot, 0)}
                 </div>
               </div>
               <div className='basis-7/12 bg-zimburseGray flex flex-col items-end min-h-0 p-4'>
@@ -274,8 +318,10 @@ export default function ReimbursementManagementView(): JSX.Element {
           open={showAddRecipientModal}
         />
         <DepositModal
+          activeMonthly={escrowData?.activeMonthly ?? 0}
+          activeSpot={escrowData?.activeSpot ?? 0}
           escrowAddress={escrowAddress ?? ''}
-          escrowBalance={escrowData?.usdcBalance ?? 0}
+          escrowBalance={escrowData?.escrowed ?? 0}
           onClose={() => setShowDepositModal(false)}
           open={showDepositModal}
           setEscrowData={setEscrowData}

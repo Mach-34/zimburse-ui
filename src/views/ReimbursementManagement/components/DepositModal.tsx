@@ -1,6 +1,6 @@
 import { X } from 'lucide-react';
 import Modal, { ModalProps } from '../../../components/Modal';
-import { Dispatch, SetStateAction, useState } from 'react';
+import { Dispatch, SetStateAction, useMemo, useState } from 'react';
 import { useAztec } from '../../../contexts/AztecContext';
 import { formatNumber } from '../../../utils';
 import { AztecAddress } from '@aztec/circuits.js';
@@ -10,12 +10,16 @@ import { EscrowData } from '..';
 import { toUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
 
 type DepositModalProps = {
+  activeMonthly: number;
+  activeSpot: number;
   escrowAddress: string;
   escrowBalance: number;
   setEscrowData: Dispatch<SetStateAction<EscrowData | null>>;
 } & Omit<ModalProps, 'children'>;
 
 export default function DepositModal({
+  activeMonthly,
+  activeSpot,
   escrowAddress,
   escrowBalance,
   onClose,
@@ -54,7 +58,7 @@ export default function DepositModal({
         public: prev.public - depositAmt,
       }));
       toast.success(
-        `Succefully deposited ${formatNumber(depositAmt, 0)} USDC in Escrow`
+        `Succefully deposited ${formatNumber(depositAmt, 2)} USDC in Escrow`
       );
     } catch (err) {
       console.log('Err: ', err);
@@ -65,35 +69,49 @@ export default function DepositModal({
     }
   };
 
+  const disabled = useMemo(() => {
+    return depositAmt > tokenBalance.public;
+  }, [depositAmt, tokenBalance]);
+
   return (
-    <Modal height={85} onClose={onClose} open={open} width={80}>
+    <Modal height={70} onClose={onClose} open={open} width={80}>
       <div className='flex flex-col h-full justify-between'>
         <div>
           <X className='ml-auto' cursor='pointer' onClick={() => onClose()} />
           <div>
             <div className='text-4xl'>
-              Escrow Balance: ${formatNumber(escrowBalance, 0)}
+              Escrow Balance: ${formatNumber(escrowBalance, 2)}
             </div>
             <div className='mt-2 text-xl'>
-              Active Monthly Entitlements: $xx,xxx.xx
+              Active Monthly Entitlements: ${formatNumber(activeMonthly, 2)}
             </div>
-            <div className='text-xl'>Active Spot Entitlements: $xx,xxx.xx</div>
+            <div className='text-xl'>
+              Active Spot Entitlements: ${formatNumber(activeSpot, 2)}
+            </div>
           </div>
         </div>
         <div className='flex flex-col gap-8 items-center'>
           <div className='text-4xl'>
-            Your USDC Balance: ${formatNumber(tokenBalance.public, 0)}
+            Your USDC Balance: ${formatNumber(tokenBalance.public, 2)}
           </div>
-          <div className='flex gap-4 items-center text-xl'>
-            <div>Depositing: </div>
-            <input
-              className='bg-zimburseGray'
-              onChange={(e) => setDepositAmt(Number(e.target.value))}
-              value={depositAmt}
-            />
+          <div>
+            <div className='flex gap-4 items-center text-xl'>
+              <div>Depositing: </div>
+              <input
+                className='bg-zimburseGray'
+                onChange={(e) => setDepositAmt(Number(e.target.value))}
+                value={depositAmt}
+              />
+            </div>
+            {disabled && (
+              <div className='mt-2 text-center text-red-500 text-xs'>
+                Deposit amount exceeds balance
+              </div>
+            )}
           </div>
           <button
             className='bg-zimburseBlue flex gap-4 items-center'
+            disabled={disabled}
             onClick={() => depositUsdc()}
           >
             {depositing ? 'Depositing' : 'Deposit'}

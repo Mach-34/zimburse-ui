@@ -42,7 +42,7 @@ export default function Header(): JSX.Element {
         ...prev,
         public: prev.public + MINT_AMOUNT,
       }));
-      toast.success(`Successfully minted ${formatNumber(MINT_AMOUNT, 0)} USDC`);
+      toast.success(`Successfully minted ${formatNumber(MINT_AMOUNT, 2)} USDC`);
     } catch (err) {
       console.log('Error: ', err);
       toast.error('Error minting tokens.');
@@ -82,10 +82,10 @@ export default function Header(): JSX.Element {
               <div>USDC Balance</div>
               <div>
                 <div className='text-xs'>
-                  Public: ${formatNumber(tokenBalance.public, 0)}
+                  Public: ${formatNumber(tokenBalance.public, 2)}
                 </div>
                 <div className='text-xs'>
-                  Private: ${formatNumber(tokenBalance.private, 0)}
+                  Private: ${formatNumber(tokenBalance.private, 2)}
                 </div>
               </div>
             </div>

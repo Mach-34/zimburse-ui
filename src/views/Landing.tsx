@@ -20,7 +20,7 @@ export default function LandingView(): JSX.Element {
               className='bg-zimburseGray p-4 text-black'
               to='/reimbursement/admin'
             >
-              Setup Reimbursement
+              Manage Reimbursement Escrows
             </Link>
           </div>
         </div>
