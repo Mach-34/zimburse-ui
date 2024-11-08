@@ -18,15 +18,21 @@ import { toast } from 'react-toastify';
 import { computeSecretHash, Fr } from '@aztec/aztec.js';
 import {
   fromUSDCDecimals,
-  toUSDCDecimals,
 } from '@mach-34/zimburse/dist/src/utils';
+import { toUSDCDecimals } from "../utils";
+import { formatNumber } from '../utils';
 
 type Entitlement = {
   id: string;
   escrow: AztecAddress;
   paidOut: number;
+  maxClaimmable: number;
   spot: boolean;
   title: string;
+};
+
+const emailTypes: { [key: number]: string } = {
+  2: 'Linode',
 };
 
 const {
@@ -77,13 +83,17 @@ export default function ReimbursementsView(): JSX.Element {
       formattedEntitlements.push(
         ...entitlementsStorage
           .slice(0, Number(entitlementsLen))
-          .map((entitlement: any, index: number) => ({
-            id: `${escrowContract.address.toString()}-${index}`,
-            escrow: escrowContract.address,
-            paidOut: 0,
-            spot: entitlement.spot,
-            title: ENTITLEMENT_TITLES[entitlement.verifier_id],
-          }))
+          .map((entitlement: any, index: number) => {
+            return {
+              id: `${escrowContract.address.toString()}-${index}`,
+              escrow: escrowContract.address,
+              paidOut: 0,
+              // TODO: Comibne hi and lo
+              maxClaimmable: Number(fromUSDCDecimals(entitlement.max_value.lo)),
+              spot: entitlement.spot,
+              title: ENTITLEMENT_TITLES[entitlement.verifier_id],
+            };
+          })
       );
       setEntitlements(formattedEntitlements);
     }
@@ -109,7 +119,7 @@ export default function ReimbursementsView(): JSX.Element {
       const secretHash = computeSecretHash(secret);
 
       // hardcode amount to 22 for now
-      const amount = toUSDCDecimals(22n);
+      const amount = toUSDCDecimals(22);
 
       const receipt = await escrowContract.methods
         .reimburse_linode_recurring(formattedInputs, secretHash)
@@ -178,7 +188,13 @@ export default function ReimbursementsView(): JSX.Element {
                     <div>{entitlement.title}</div>
                     <div className='flex justify-between mt-2 text-sm'>
                       <div>Org: TODO</div>
-                      <div>amt: TODO</div>
+                      <div>
+                        Amount: $
+                        {formatNumber(
+                          entitlements[selectedEntitlement].maxClaimmable,
+                          2
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -214,11 +230,15 @@ export default function ReimbursementsView(): JSX.Element {
                       </>
                     ) : (
                       <>
-                        <div className='text-lg'>Max Claimmable: TODO</div>
+                        <div className='text-lg'>
+                          Max Claimmable: $
+                          {formatNumber(
+                            entitlements[selectedEntitlement].maxClaimmable,
+                            2
+                          )}
+                        </div>
                         <div className='text-lg'>Accepted Dates: TODO</div>
-                        <div className='text-lg'>Two-way: TODO</div>
-                        <div className='text-lg'>From: TODO</div>
-                        <div className='text-lg'>Email type: TODO</div>
+                        <div className='text-lg'>Email type: Linode</div>
                       </>
                     )}
                   </div>

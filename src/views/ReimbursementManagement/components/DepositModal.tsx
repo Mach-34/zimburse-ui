@@ -7,7 +7,8 @@ import { AztecAddress } from '@aztec/circuits.js';
 import { toast } from 'react-toastify';
 import Loader from '../../../components/Loader';
 import { EscrowData } from '..';
-import { toUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
+import { toUSDCDecimals } from "../../../utils";
+import { NUMBER_INPUT_REGEX } from "../../../utils/constants";
 
 type DepositModalProps = {
   activeMonthly: number;
@@ -33,7 +34,7 @@ export default function DepositModal({
     tokenBalance,
     tokenContract,
   } = useAztec();
-  const [depositAmt, setDepositAmt] = useState<number>(0);
+  const [depositAmt, setDepositAmt] = useState<string>("");
   const [depositing, setDepositing] = useState<boolean>(false);
 
   const depositUsdc = async () => {
@@ -44,34 +45,40 @@ export default function DepositModal({
         .transfer_public(
           account.getAddress(),
           AztecAddress.fromString(escrowAddress),
-          toUSDCDecimals(BigInt(depositAmt)),
+          toUSDCDecimals(Number(depositAmt)),
           0
         )
         .send()
         .wait();
       setEscrowData((prev: any) => ({
         ...prev,
-        usdcBalance: prev.usdcBalance + depositAmt,
+        usdcBalance: prev.usdcBalance + Number(depositAmt),
       }));
       setTokenBalance((prev) => ({
         ...prev,
-        public: prev.public - depositAmt,
+        public: prev.public - Number(depositAmt),
       }));
       toast.success(
-        `Succefully deposited ${formatNumber(depositAmt, 2)} USDC in Escrow`
+        `Succefully deposited ${formatNumber(Number(depositAmt), 2)} USDC in Escrow`
       );
     } catch (err) {
       console.log('Err: ', err);
       toast.error('Error depositing USDC');
     } finally {
-      setDepositAmt(0);
+      setDepositAmt('');
       setDepositing(false);
     }
   };
 
   const disabled = useMemo(() => {
-    return depositAmt > tokenBalance.public;
+    return Number(depositAmt) > tokenBalance.public;
   }, [depositAmt, tokenBalance]);
+
+  const handleDepositInput = (val: string) => {
+    if(NUMBER_INPUT_REGEX.test(val)) {
+      setDepositAmt(val)
+    }
+  }
 
   return (
     <Modal height={70} onClose={onClose} open={open} width={80}>
@@ -99,7 +106,8 @@ export default function DepositModal({
               <div>Depositing: </div>
               <input
                 className='bg-zimburseGray'
-                onChange={(e) => setDepositAmt(Number(e.target.value))}
+                onChange={(e) => handleDepositInput(e.target.value)}
+                placeholder="Enter deposit amount"
                 value={depositAmt}
               />
             </div>
@@ -110,7 +118,7 @@ export default function DepositModal({
             )}
           </div>
           <button
-            className='bg-zimburseBlue flex gap-4 items-center'
+            className='bg-zimburseBlue flex gap-4 items-center ml-auto'
             disabled={disabled}
             onClick={() => depositUsdc()}
           >

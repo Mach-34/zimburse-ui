@@ -20,3 +20,5 @@ export const parseStringBytes = (bytes: bigint[]): string => {
 export const truncateAddress = (address: string, startLen?: number, endLen?: number) => {
     return `${address.slice(0, startLen ?? 6)}...${address.slice((endLen ?? 4) * -1)}`
 }
+
+export const toUSDCDecimals = (amount: number) => BigInt(amount * 10 ** 2) * 10n ** BigInt(4);

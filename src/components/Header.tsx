@@ -4,7 +4,7 @@ import { formatNumber, truncateAddress } from '../utils';
 import useOutsideAlerter from '../hooks/useOutsideAlerter';
 import Loader from './Loader';
 import { toast } from 'react-toastify';
-import { toUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
+import { toUSDCDecimals } from "../utils";
 
 export default function Header(): JSX.Element {
   const {
@@ -34,7 +34,7 @@ export default function Header(): JSX.Element {
         .withWallet(registryAdmin)
         .methods.mint_public(
           account.getAddress(),
-          toUSDCDecimals(BigInt(MINT_AMOUNT))
+          toUSDCDecimals(MINT_AMOUNT)
         )
         .send()
         .wait();

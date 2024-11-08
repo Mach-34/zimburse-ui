@@ -9,13 +9,14 @@ import RecipientDataModal from './components/RecipientDataModal';
 import AppLayout from '../../layouts/AppLayout';
 import { toast } from 'react-toastify';
 import { useAztec } from '../../contexts/AztecContext';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AztecAddress } from '@aztec/circuits.js';
 import { formatNumber, truncateAddress } from '../../utils';
 import Loader from '../../components/Loader';
 import useEscrowContract from '../../hooks/useEscrowContract';
 import useRegistryContract from '../../hooks/useRegistryContract';
 import { fromUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
+import { ArrowLeft } from 'lucide-react';
 
 const POLICIES = [
   {
@@ -55,6 +56,7 @@ export default function ReimbursementManagementView(): JSX.Element {
   const { id: escrowAddress } = useParams();
   const { account, registryAdmin, tokenContract, viewOnlyAccount } = useAztec();
   const escrowContract = useEscrowContract(escrowAddress!);
+  const navigate = useNavigate();
   const registryContract = useRegistryContract(ESCROW_REGISTRY_CONTRACT);
 
   const [addingRecipient, setAddingRecipient] = useState<boolean>(false);
@@ -215,7 +217,14 @@ export default function ReimbursementManagementView(): JSX.Element {
           <>
             <div className='flex flex-col justify-between w-1/2'>
               <div>
-                <div className='text-4xl'>{escrowData.title}</div>
+                <div className='flex gap-4 items-center'>
+                  <ArrowLeft
+                    cursor='pointer'
+                    onClick={() => navigate('/reimbursement/admin')}
+                    size={24}
+                  />
+                  <div className='text-4xl'>{escrowData.title}</div>
+                </div>
                 <div className='flex gap-10 items-center mt-4'>
                   <div className='text-lg'>
                     Escrow Balance: ${formatNumber(escrowData.escrowed, 2)}

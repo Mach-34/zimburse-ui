@@ -2,7 +2,6 @@ import { X } from 'lucide-react';
 import Modal, { ModalProps } from '../../../components/Modal';
 import { useEffect, useState } from 'react';
 import ConfirmationModal from './ConfirmationModal';
-import Select from '../../../components/Select';
 import { truncateAddress } from '../../../utils';
 import { useAztec } from '../../../contexts/AztecContext';
 import { ZImburseEscrowContract } from '../../../artifacts';
@@ -10,7 +9,9 @@ import { AztecAddress } from '@aztec/circuits.js';
 import { toast } from 'react-toastify';
 import Loader from '../../../components/Loader';
 import { ENTITLEMENT_TITLES } from '../../../utils/constants';
-import { toUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
+import { toUSDCDecimals } from "../../../utils";
+
+import AddEntitlementModal from './AddEntitlementModal';
 
 type RecipientDataModalProps = {
   escrowContract: ZImburseEscrowContract | null;
@@ -31,29 +32,32 @@ export default function RecipientDataModal({
   onClose,
   open,
 }: RecipientDataModalProps): JSX.Element {
-  const { account, registryAdmin } = useAztec();
+  const { account } = useAztec();
   const [addingEntitlement, setAddingEntilement] = useState<boolean>(false);
-  const [deleteId, setDeleteId] = useState<number>(-1);
+  const [nullifyId, setNullifyId] = useState<number>(-1);
   const [entitlements, setEntitlements] = useState<Array<Entitlement>>([]);
   const [fetchingEntitlements, setFetchingEntitlements] =
     useState<boolean>(true);
-  const [selectedEntitlement, setSelectedEntitlement] = useState<
-    string | undefined
-  >(undefined);
   const [selectedTab] = useState<number>(1);
+  const [showEntitlementModal, setShowEntitlementModal] =
+    useState<boolean>(false);
 
-  const addEntitlement = async () => {
+  const addEntitlement = async (
+    amount: number,
+    verifier: string,
+    spot: boolean | undefined
+  ) => {
     if (!account || !escrowContract) return;
     setAddingEntilement(true);
-    try {
-      // harcode amount to 1,000,000 for now
-      const amount = 1000;
 
+    const verifierId = verifier === 'Linode' ? 2 : 3;  
+
+    try {
       // give participant entitlement
       await escrowContract.methods
         .give_recurring_entitlement(
           AztecAddress.fromString(recipient.address),
-          toUSDCDecimals(BigInt(amount)),
+          toUSDCDecimals(amount),
           2
         )
         .send()
@@ -71,9 +75,18 @@ export default function RecipientDataModal({
     }
   };
 
-  const deleteEntitlement = () => {
-    setEntitlements((prev) => prev.filter((_, index) => index !== deleteId));
-    setDeleteId(-1);
+  const nullifyEntitlement = async () => {
+    if (!escrowContract) return;
+
+    console.log('Recipient address: ', recipient.address)
+
+    await escrowContract.methods
+      .revoke_entitlement(AztecAddress.fromString(recipient.address), 2, false)
+      .send()
+      .wait();
+
+    setEntitlements((prev) => prev.filter((_, index) => index !== nullifyId));
+    setNullifyId(-1);
   };
 
   const fetchEntitlements = async () => {
@@ -87,6 +100,8 @@ export default function RecipientDataModal({
         { _is_some: false, _value: false }
       )
       .simulate();
+
+    console.log('Entitlements: ', entitlements)
 
     const { len, storage } = entitlements[0];
 
@@ -122,16 +137,10 @@ export default function RecipientDataModal({
             <div className='flex flex-col items-center'>
               <button
                 className='bg-zimburseBlue mb-4'
-                onClick={() => addEntitlement()}
+                onClick={() => setShowEntitlementModal(true)}
               >
                 Add entitlement
               </button>
-              <Select
-                onChange={setSelectedEntitlement}
-                placeholder='Select entitlement'
-                selected={selectedEntitlement}
-                options={['Linode', 'United']}
-              />
             </div>
           </div>
           <div className='bg-zimburseGray flex flex-col h-full min-h-0 p-4 w-1/2'>
@@ -165,7 +174,7 @@ export default function RecipientDataModal({
                     <div className='flex flex-col items-end'>
                       <div
                         className='bg-[#FF0000] cursor-pointer flex items-center p-0'
-                        onClick={() => setDeleteId(index)}
+                        onClick={() => setNullifyId(index)}
                       >
                         <X size={16} />
                       </div>
@@ -185,15 +194,21 @@ export default function RecipientDataModal({
           </div>
         </div>
       </div>
+      <AddEntitlementModal
+        loading={addingEntitlement}
+        onClose={() => setShowEntitlementModal(false)}
+        onFinish={(amount, verifier, spot) => addEntitlement(amount, verifier, spot)}
+        open={showEntitlementModal}
+      />
       <ConfirmationModal
         message={
-          deleteId >= 0
-            ? `Are you sure you want to nullify ${entitlements[deleteId].title}?`
+          nullifyId >= 0
+            ? `Are you sure you want to nullify ${entitlements[nullifyId].title}?`
             : ''
         }
-        onClose={() => setDeleteId(-1)}
-        onFinish={deleteEntitlement}
-        open={deleteId >= 0}
+        onClose={() => setNullifyId(-1)}
+        onFinish={nullifyEntitlement}
+        open={nullifyId >= 0}
       />
     </Modal>
   );

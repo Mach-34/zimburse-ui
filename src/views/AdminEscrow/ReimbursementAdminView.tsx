@@ -106,8 +106,6 @@ export default function ReimbursementSetupView(): JSX.Element {
       )
       .simulate();
 
-    console.log('Spot entitlements: ', spotEntitlements);
-
     // fetch recurring entitlement
     const recurringEntitlements = await escrowContract.methods
       .view_entitlements(
@@ -118,8 +116,6 @@ export default function ReimbursementSetupView(): JSX.Element {
         { _is_some: true, _value: false }
       )
       .simulate();
-
-    console.log('Recurring entitlements: ', recurringEntitlements);
 
     return {
       activeMonthly: 0,
