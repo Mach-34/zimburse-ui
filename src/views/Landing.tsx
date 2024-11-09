@@ -14,13 +14,13 @@ export default function LandingView(): JSX.Element {
               className='bg-zimburseGray p-4 text-black'
               to='/reimbursements'
             >
-              Get Reimbursed
+              Claim Reimbursements
             </Link>
             <Link
               className='bg-zimburseGray p-4 text-black'
               to='/reimbursement/admin'
             >
-              Manage Reimbursement Escrows
+              Manage Escrows
             </Link>
           </div>
         </div>
