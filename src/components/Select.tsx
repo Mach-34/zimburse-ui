@@ -43,6 +43,7 @@ export default function Select({
           {filteredOptions.map((option) => (
             <div
               className='hover:bg-[#939393] px-2 py-1'
+              key={option}
               onClick={() => onChange(option)}
             >
               {option}

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useAztec } from '../contexts/AztecContext';
-import { formatNumber, truncateAddress } from '../utils';
+import { formatUSDC, truncateAddress } from '../utils';
 import useOutsideAlerter from '../hooks/useOutsideAlerter';
 import Loader from './Loader';
 import { toast } from 'react-toastify';
@@ -24,7 +24,7 @@ export default function Header(): JSX.Element {
 
   useOutsideAlerter(menuRef, () => setShowMenu(false));
 
-  const MINT_AMOUNT = 10000;
+  const MINT_AMOUNT = toUSDCDecimals(10000n);
 
   const mintUsdc = async () => {
     if (!account || !registryAdmin || !tokenContract) return;
@@ -34,7 +34,7 @@ export default function Header(): JSX.Element {
         .withWallet(registryAdmin)
         .methods.mint_public(
           account.getAddress(),
-          toUSDCDecimals(MINT_AMOUNT)
+          MINT_AMOUNT
         )
         .send()
         .wait();
@@ -42,7 +42,7 @@ export default function Header(): JSX.Element {
         ...prev,
         public: prev.public + MINT_AMOUNT,
       }));
-      toast.success(`Successfully minted ${formatNumber(MINT_AMOUNT, 2)} USDC`);
+      toast.success(`Successfully minted ${formatUSDC(MINT_AMOUNT)} USDC`);
     } catch (err) {
       console.log('Error: ', err);
       toast.error('Error minting tokens.');
@@ -82,10 +82,10 @@ export default function Header(): JSX.Element {
               <div>USDC Balance</div>
               <div>
                 <div className='text-xs'>
-                  Public: ${formatNumber(tokenBalance.public, 2)}
+                  Public: ${formatUSDC(tokenBalance.public)}
                 </div>
                 <div className='text-xs'>
-                  Private: ${formatNumber(tokenBalance.private, 2)}
+                  Private: ${formatUSDC(tokenBalance.private)}
                 </div>
               </div>
             </div>

@@ -3,6 +3,7 @@ import Modal, { ModalProps } from '../../../components/Modal';
 import { useEffect, useMemo, useState } from 'react';
 import Loader from '../../../components/Loader';
 import Select from '../../../components/Select';
+import { NUMBER_INPUT_REGEX } from "../../../utils/constants";
 
 type AddEntitlementModalProps = {
   loading: boolean;
@@ -15,18 +16,24 @@ export default function AddEntitlementModal({
   onFinish,
   open,
 }: AddEntitlementModalProps) {
-  const [amount, setAmount] = useState<number>(0);
+  const [amount, setAmount] = useState<string>('');
   const [selectedEntitlement, setSelectedEntitlement] = useState<
     string | undefined
   >(undefined);
   const [spot, setSpot] = useState<boolean>(false);
 
   const disabled = useMemo(() => {
-    return amount <= 0 || !selectedEntitlement;
+    return Number(amount) <= 0 || !selectedEntitlement;
   }, [amount, selectedEntitlement]);
 
+  const handleDepositInput = (val: string) => {
+    if(NUMBER_INPUT_REGEX.test(val)) {
+      setAmount(val)
+    }
+  }
+
   useEffect(() => {
-    setAmount(0);
+    setAmount('');
   }, [open]);
 
   return (
@@ -38,9 +45,9 @@ export default function AddEntitlementModal({
           <div>Amount</div>
           <input
             className='bg-zimburseGray my-2'
-            onChange={(e) => setAmount(Number(e.target.value))}
+            onChange={(e) => handleDepositInput(e.target.value)}
+            placeholder="Enter amount"
             value={amount}
-            type='number'
           />
           <div className='my-2'>Verifier Type</div>
           <Select
@@ -61,7 +68,7 @@ export default function AddEntitlementModal({
         <button
           className='bg-zimburseBlue flex items-center gap-2'
           disabled={disabled}
-          onClick={() => onFinish(amount, selectedEntitlement ?? '', spot)}
+          onClick={() => onFinish(Number(amount), selectedEntitlement ?? '', spot)}
         >
           <div>{loading ? 'Adding entitlement...' : 'Add entitlement'}</div>
           {loading && <Loader />}

@@ -11,11 +11,10 @@ import { toast } from 'react-toastify';
 import { useAztec } from '../../contexts/AztecContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AztecAddress } from '@aztec/circuits.js';
-import { formatNumber, truncateAddress } from '../../utils';
+import { formatUSDC, truncateAddress } from '../../utils';
 import Loader from '../../components/Loader';
 import useEscrowContract from '../../hooks/useEscrowContract';
 import useRegistryContract from '../../hooks/useRegistryContract';
-import { fromUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
 import { ArrowLeft } from 'lucide-react';
 
 const POLICIES = [
@@ -38,9 +37,9 @@ const POLICIES = [
 ];
 
 export type EscrowData = {
-  activeMonthly: number;
-  activeSpot: number;
-  escrowed: number;
+  activeMonthly: bigint;
+  activeSpot: bigint;
+  escrowed: bigint;
   title: string;
 };
 
@@ -137,9 +136,9 @@ export default function ReimbursementManagementView(): JSX.Element {
     //   )
     //   .simulate();
     return {
-      activeMonthly: 0,
-      activeSpot: 0,
-      escrowed: Number(fromUSDCDecimals(balance)),
+      activeMonthly: 0n,
+      activeSpot: 0n,
+      escrowed: balance,
       title,
     };
   };
@@ -227,7 +226,7 @@ export default function ReimbursementManagementView(): JSX.Element {
                 </div>
                 <div className='flex gap-10 items-center mt-4'>
                   <div className='text-lg'>
-                    Escrow Balance: ${formatNumber(escrowData.escrowed, 2)}
+                    Escrow Balance: ${formatUSDC(escrowData.escrowed)}
                   </div>
                   <button
                     className='bg-zimburseWalle flex gap-2 items-center px-2 py-1'
@@ -239,11 +238,11 @@ export default function ReimbursementManagementView(): JSX.Element {
                 </div>
                 <div className='text-lg'>
                   Active Monthly Entitlements: $
-                  {formatNumber(escrowData.activeMonthly, 0)}
+                  {formatUSDC(escrowData.activeMonthly)}
                 </div>
                 <div className='text-lg'>
                   Active Spot Entitlements: $
-                  {formatNumber(escrowData.activeSpot, 0)}
+                  {formatUSDC(escrowData.activeSpot)}
                 </div>
               </div>
               <div className='basis-7/12 bg-zimburseGray flex flex-col items-end min-h-0 p-4'>
@@ -327,10 +326,10 @@ export default function ReimbursementManagementView(): JSX.Element {
           open={showAddRecipientModal}
         />
         <DepositModal
-          activeMonthly={escrowData?.activeMonthly ?? 0}
-          activeSpot={escrowData?.activeSpot ?? 0}
+          activeMonthly={escrowData?.activeMonthly ?? 0n}
+          activeSpot={escrowData?.activeSpot ?? 0n}
           escrowAddress={escrowAddress ?? ''}
-          escrowBalance={escrowData?.escrowed ?? 0}
+          escrowBalance={escrowData?.escrowed ?? 0n}
           onClose={() => setShowDepositModal(false)}
           open={showDepositModal}
           setEscrowData={setEscrowData}

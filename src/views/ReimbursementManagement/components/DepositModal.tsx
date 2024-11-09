@@ -2,19 +2,18 @@ import { X } from 'lucide-react';
 import Modal, { ModalProps } from '../../../components/Modal';
 import { Dispatch, SetStateAction, useMemo, useState } from 'react';
 import { useAztec } from '../../../contexts/AztecContext';
-import { formatNumber } from '../../../utils';
 import { AztecAddress } from '@aztec/circuits.js';
 import { toast } from 'react-toastify';
 import Loader from '../../../components/Loader';
 import { EscrowData } from '..';
-import { toUSDCDecimals } from "../../../utils";
+import { formatUSDC, toUSDCDecimals } from "../../../utils";
 import { NUMBER_INPUT_REGEX } from "../../../utils/constants";
 
 type DepositModalProps = {
-  activeMonthly: number;
-  activeSpot: number;
+  activeMonthly: bigint;
+  activeSpot: bigint;
   escrowAddress: string;
-  escrowBalance: number;
+  escrowBalance: bigint;
   setEscrowData: Dispatch<SetStateAction<EscrowData | null>>;
 } & Omit<ModalProps, 'children'>;
 
@@ -39,27 +38,28 @@ export default function DepositModal({
 
   const depositUsdc = async () => {
     if (!account || !registryAdmin || !tokenContract) return;
+    const amount = toUSDCDecimals(depositAmt);
     try {
       setDepositing(true);
       await tokenContract.methods
         .transfer_public(
           account.getAddress(),
           AztecAddress.fromString(escrowAddress),
-          toUSDCDecimals(Number(depositAmt)),
+          amount,
           0
         )
         .send()
         .wait();
       setEscrowData((prev: any) => ({
         ...prev,
-        usdcBalance: prev.usdcBalance + Number(depositAmt),
+        escrowed: prev.escrowed + amount,
       }));
       setTokenBalance((prev) => ({
         ...prev,
-        public: prev.public - Number(depositAmt),
+        public: prev.public - amount,
       }));
       toast.success(
-        `Succefully deposited ${formatNumber(Number(depositAmt), 2)} USDC in Escrow`
+        `Succefully deposited ${formatUSDC(amount)} USDC in Escrow`
       );
     } catch (err) {
       console.log('Err: ', err);
@@ -70,8 +70,10 @@ export default function DepositModal({
     }
   };
 
-  const disabled = useMemo(() => {
-    return Number(depositAmt) > tokenBalance.public;
+  const exceedsBalance = useMemo(() => {
+    if(depositAmt === "") return;
+    const intAmount = toUSDCDecimals(depositAmt);
+    return intAmount > tokenBalance.public;
   }, [depositAmt, tokenBalance]);
 
   const handleDepositInput = (val: string) => {
@@ -87,19 +89,19 @@ export default function DepositModal({
           <X className='ml-auto' cursor='pointer' onClick={() => onClose()} />
           <div>
             <div className='text-4xl'>
-              Escrow Balance: ${formatNumber(escrowBalance, 2)}
+              Escrow Balance: ${formatUSDC(escrowBalance)}
             </div>
             <div className='mt-2 text-xl'>
-              Active Monthly Entitlements: ${formatNumber(activeMonthly, 2)}
+              Active Monthly Entitlements: ${formatUSDC(activeMonthly)}
             </div>
             <div className='text-xl'>
-              Active Spot Entitlements: ${formatNumber(activeSpot, 2)}
+              Active Spot Entitlements: ${formatUSDC(activeSpot)}
             </div>
           </div>
         </div>
         <div className='flex flex-col gap-8 items-center'>
           <div className='text-4xl'>
-            Your USDC Balance: ${formatNumber(tokenBalance.public, 2)}
+            Your USDC Balance: ${formatUSDC(tokenBalance.public)}
           </div>
           <div>
             <div className='flex gap-4 items-center text-xl'>
@@ -111,7 +113,7 @@ export default function DepositModal({
                 value={depositAmt}
               />
             </div>
-            {disabled && (
+            {exceedsBalance && (
               <div className='mt-2 text-center text-red-500 text-xs'>
                 Deposit amount exceeds balance
               </div>
@@ -119,7 +121,7 @@ export default function DepositModal({
           </div>
           <button
             className='bg-zimburseBlue flex gap-4 items-center ml-auto'
-            disabled={disabled}
+            disabled={!depositAmt || exceedsBalance}
             onClick={() => depositUsdc()}
           >
             {depositing ? 'Depositing' : 'Deposit'}

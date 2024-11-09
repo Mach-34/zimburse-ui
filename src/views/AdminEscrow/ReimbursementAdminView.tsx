@@ -10,7 +10,7 @@ import { AztecAddress } from '@aztec/circuits.js';
 import Loader from '../../components/Loader';
 import useRegistryContract from '../../hooks/useRegistryContract';
 import { fromUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
-import { formatNumber } from '../../utils';
+import { formatUSDC } from "../../utils";
 
 const {
   VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT,
@@ -18,9 +18,9 @@ const {
 } = import.meta.env;
 
 type EscrowGroup = {
-  activeMonthly: number;
-  activeSpot: number;
-  escrowed: number;
+  activeMonthly: bigint;
+  activeSpot: bigint;
+  escrowed: bigint;
   id: string;
   title: string;
 };
@@ -118,9 +118,9 @@ export default function ReimbursementSetupView(): JSX.Element {
       .simulate();
 
     return {
-      activeMonthly: 0,
-      activeSpot: 0,
-      escrowed: Number(fromUSDCDecimals(balance)),
+      activeMonthly: 0n,
+      activeSpot: 0n,
+      escrowed: balance,
       id: escrowAddress.toString(),
       title,
     };
@@ -203,15 +203,15 @@ export default function ReimbursementSetupView(): JSX.Element {
                         Total reimbursed: $xxx,xxx.xx
                       </div>
                       <div className='text-lg'>
-                        Escrowed: ${formatNumber(selectedGroup.escrowed, 2)}
+                        Escrowed: ${formatUSDC(selectedGroup.escrowed)}
                       </div>
                       <div className='text-lg'>
                         Active Monthly Entitlements: $
-                        {formatNumber(selectedGroup.activeMonthly, 2)}
+                        {formatUSDC(selectedGroup.activeMonthly)}
                       </div>
                       <div className='text-lg'>
                         Active Spot Entitlements: $
-                        {formatNumber(selectedGroup.activeSpot, 2)}
+                        {formatUSDC(selectedGroup.activeSpot)}
                       </div>
                     </div>
                   </div>

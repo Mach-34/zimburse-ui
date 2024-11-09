@@ -4,4 +4,4 @@ export const ENTITLEMENT_TITLES: { [key: number]: string } = {
     2: 'Linode Billing',
 };
 
-export const NUMBER_INPUT_REGEX = /^\d*\.?\d{0,2}$/;
+export const NUMBER_INPUT_REGEX = /^\d*\.?\d{0,6}$/;

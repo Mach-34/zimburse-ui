@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 import Modal, { ModalProps } from '../../../components/Modal';
 import { useEffect, useState } from 'react';
 import ConfirmationModal from './ConfirmationModal';
-import { truncateAddress } from '../../../utils';
+import { fromU128, fromUSDCDecimals, truncateAddress } from '../../../utils';
 import { useAztec } from '../../../contexts/AztecContext';
 import { ZImburseEscrowContract } from '../../../artifacts';
 import { AztecAddress } from '@aztec/circuits.js';
@@ -19,6 +19,7 @@ type RecipientDataModalProps = {
 } & Omit<ModalProps, 'children'>;
 
 type Entitlement = {
+  maxAmount?: number;
   paidOut?: number;
   title: string;
   spot: boolean;
@@ -101,13 +102,13 @@ export default function RecipientDataModal({
       )
       .simulate();
 
-    console.log('Entitlements: ', entitlements)
-
     const { len, storage } = entitlements[0];
 
     const formattedEntitlements = storage
       .slice(0, Number(len))
       .map((entitlement: any) => ({
+        maxAmount: fromUSDCDecimals(fromU128(entitlement.max_value)).integer,
+        paidOut: 10,
         title: ENTITLEMENT_TITLES[entitlement.verifier_id as number],
       }));
     setEntitlements(formattedEntitlements);
@@ -178,7 +179,8 @@ export default function RecipientDataModal({
                       >
                         <X size={16} />
                       </div>
-                      {entitlement.paidOut && <div>Paid out: TODO</div>}
+                      {!!entitlement.maxAmount && <div>Max amount: ${entitlement.maxAmount.toLocaleString('en-US')}</div>}
+                      {!!entitlement.paidOut && <div>Paid out: ${entitlement.paidOut}</div>}
                     </div>
                   </div>
                 ))

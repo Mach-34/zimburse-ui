@@ -19,14 +19,13 @@ import { computeSecretHash, Fr } from '@aztec/aztec.js';
 import {
   fromUSDCDecimals,
 } from '@mach-34/zimburse/dist/src/utils';
-import { toUSDCDecimals } from "../utils";
-import { formatNumber } from '../utils';
+import { formatUSDC, toUSDCDecimals } from "../utils";
 
 type Entitlement = {
   id: string;
   escrow: AztecAddress;
-  paidOut: number;
-  maxClaimmable: number;
+  paidOut: bigint;
+  maxClaimmable: bigint;
   spot: boolean;
   title: string;
 };
@@ -119,7 +118,7 @@ export default function ReimbursementsView(): JSX.Element {
       const secretHash = computeSecretHash(secret);
 
       // hardcode amount to 22 for now
-      const amount = toUSDCDecimals(22);
+      const amount = toUSDCDecimals(22n);
 
       const receipt = await escrowContract.methods
         .reimburse_linode_recurring(formattedInputs, secretHash)
@@ -141,7 +140,7 @@ export default function ReimbursementsView(): JSX.Element {
 
       setTokenBalance((prev) => ({
         ...prev,
-        private: prev.private + Number(fromUSDCDecimals(amount)),
+        private: prev.private + amount,
       }));
 
       toast.success('Successfully redeemed Linode entitlement!');
@@ -190,10 +189,7 @@ export default function ReimbursementsView(): JSX.Element {
                       <div>Org: TODO</div>
                       <div>
                         Amount: $
-                        {formatNumber(
-                          entitlements[selectedEntitlement].maxClaimmable,
-                          2
-                        )}
+                        {formatUSDC(entitlements[selectedEntitlement].maxClaimmable)}
                       </div>
                     </div>
                   </div>
@@ -232,10 +228,7 @@ export default function ReimbursementsView(): JSX.Element {
                       <>
                         <div className='text-lg'>
                           Max Claimmable: $
-                          {formatNumber(
-                            entitlements[selectedEntitlement].maxClaimmable,
-                            2
-                          )}
+                          {formatUSDC(entitlements[selectedEntitlement].maxClaimmable)}
                         </div>
                         <div className='text-lg'>Accepted Dates: TODO</div>
                         <div className='text-lg'>Email type: Linode</div>
