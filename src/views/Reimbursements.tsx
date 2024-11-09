@@ -13,13 +13,17 @@ import {
   makeLinodeInputs,
   formatRedeemLinode,
 } from '@mach-34/zimburse/dist/src/email_inputs/linode';
+import {
+  makeUnitedInputs,
+  toContractFriendly
+} from '@mach-34/zimburse/dist/src/email_inputs/united';
 import { addPendingShieldNoteToPXE } from '@mach-34/zimburse/dist/src/contract_drivers/notes';
 import { toast } from 'react-toastify';
 import { computeSecretHash, Fr } from '@aztec/aztec.js';
 import {
   fromUSDCDecimals,
 } from '@mach-34/zimburse/dist/src/utils';
-import { formatUSDC, toUSDCDecimals } from "../utils";
+import { formatUSDC, fromU128, toUSDCDecimals } from "../utils";
 
 type Entitlement = {
   id: string;
@@ -32,7 +36,31 @@ type Entitlement = {
 
 const emailTypes: { [key: number]: string } = {
   2: 'Linode',
+  3: 'United'
 };
+
+const MAX_CHUNK_SIZE = 2048;
+
+/**
+ * Breaks u8 array into capsules
+ * @param data - the data to break into capsules
+ * @returns the capsules in order to insert
+ */
+export function breakIntoCapsules(data: number[], chunkSize?: number): Fr[][] {
+    if (!chunkSize) chunkSize = MAX_CHUNK_SIZE;
+    // pad to maxLength
+    const chunks: Fr[][] = [];
+    for (let i = 0; i < data.length; i += chunkSize) {
+        const endIndex = i + chunkSize <= data.length ? i + chunkSize : data.length;
+        let chunk = data.slice(i, endIndex);
+        if (chunk.length < chunkSize) {
+            chunk = chunk.concat(Array(chunkSize - chunk.length).fill(0));
+        }
+        // chunks.push(data.slice(i, i + MAX_CHUNK_SIZE).map((x) => parseInt(x)));
+        chunks.push(chunk.map(x => new Fr(x)));
+    }
+    return chunks.reverse();
+}
 
 const {
   VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT,
@@ -88,7 +116,7 @@ export default function ReimbursementsView(): JSX.Element {
               escrow: escrowContract.address,
               paidOut: 0,
               // TODO: Comibne hi and lo
-              maxClaimmable: Number(fromUSDCDecimals(entitlement.max_value.lo)),
+              maxClaimmable: fromU128(entitlement.max_value),
               spot: entitlement.spot,
               title: ENTITLEMENT_TITLES[entitlement.verifier_id],
             };
@@ -111,19 +139,42 @@ export default function ReimbursementsView(): JSX.Element {
         account
       );
 
-      const inputs = await makeLinodeInputs(buffer);
-      const formattedInputs = formatRedeemLinode(inputs);
+      // const inputs = await makeLinodeInputs(buffer);
+      // const formattedInputs = formatRedeemLinode(inputs);
+
+      const { deferred, inputs } = await makeUnitedInputs(buffer);
+      const formattedInputs = toContractFriendly(inputs);
+
+      const amountToDateLength: number = deferred.amountToDateBody.length;
+      console.log("amount to date length", amountToDateLength);
+      const remainingLength: number = deferred.remainingBody.length;
+      console.log("remaining length", remainingLength);
 
       const secret = Fr.random();
       const secretHash = computeSecretHash(secret);
 
       // hardcode amount to 22 for now
-      const amount = toUSDCDecimals(22n);
+      const amount = toUSDCDecimals('1717.85');
 
-      const receipt = await escrowContract.methods
-        .reimburse_linode_recurring(formattedInputs, secretHash)
-        .send()
-        .wait();
+      // const receipt = await escrowContract.methods
+      //   .reimburse_linode_recurring(formattedInputs, secretHash)
+      //   .send()
+      //   .wait();
+
+      let capsules = breakIntoCapsules(deferred.remainingBody.map((val: string) => parseInt(val)));
+      for (const capsule of capsules)
+          await account.addCapsule(capsule);
+      capsules = breakIntoCapsules(deferred.amountToDateBody.map((val: string) => parseInt(val)));
+      for (const capsule of capsules)
+          await account.addCapsule(capsule);
+
+      const receipt = await escrowContract.methods.reimburse_united_spot(
+        formattedInputs,
+        amountToDateLength,
+        remainingLength,
+        deferred.actualLength,
+        secretHash
+      ).send().wait();
 
       await addPendingShieldNoteToPXE(
         account,
@@ -158,6 +209,8 @@ export default function ReimbursementsView(): JSX.Element {
     })();
   }, [registryContract]);
 
+  console.log('Entitlements: ', entitlements)
+
   return (
     <AppLayout>
       <div className='text-center text-3xl'>Your Z-Imburse Escrows</div>
@@ -189,7 +242,7 @@ export default function ReimbursementsView(): JSX.Element {
                       <div>Org: TODO</div>
                       <div>
                         Amount: $
-                        {formatUSDC(entitlements[selectedEntitlement].maxClaimmable)}
+                        {/* {formatUSDC(entitlements[selectedEntitlement].maxClaimmable)} */}
                       </div>
                     </div>
                   </div>

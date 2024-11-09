@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 import Modal, { ModalProps } from '../../../components/Modal';
 import { useEffect, useState } from 'react';
 import ConfirmationModal from './ConfirmationModal';
-import { fromU128, fromUSDCDecimals, truncateAddress } from '../../../utils';
+import { formatUSDC, fromU128, fromUSDCDecimals, truncateAddress } from '../../../utils';
 import { useAztec } from '../../../contexts/AztecContext';
 import { ZImburseEscrowContract } from '../../../artifacts';
 import { AztecAddress } from '@aztec/circuits.js';
@@ -19,13 +19,15 @@ type RecipientDataModalProps = {
 } & Omit<ModalProps, 'children'>;
 
 type Entitlement = {
-  maxAmount?: number;
-  paidOut?: number;
+  maxAmount?: bigint;
+  paidOut?: bigint;
   title: string;
   spot: boolean;
 };
 
 const TABS = ['Historical', 'Active'];
+
+export const VERIFIERS: {[key: string]: number} = {'Linode': 2, 'United': 3 };
 
 export default function RecipientDataModal({
   escrowContract,
@@ -44,30 +46,44 @@ export default function RecipientDataModal({
     useState<boolean>(false);
 
   const addEntitlement = async (
-    amount: number,
+    amount: string,
     verifier: string,
-    spot: boolean | undefined
+    spot: boolean,
+    dateRange?: Date[],
+    destination?: string
   ) => {
     if (!account || !escrowContract) return;
     setAddingEntilement(true);
 
-    const verifierId = verifier === 'Linode' ? 2 : 3;  
-
     try {
-      // give participant entitlement
-      await escrowContract.methods
-        .give_recurring_entitlement(
+      if(spot) {
+        // give participant entitlement
+        await escrowContract.methods
+        .give_spot_entitlement(
           AztecAddress.fromString(recipient.address),
           toUSDCDecimals(amount),
-          2
+          VERIFIERS[verifier],
+          BigInt(dateRange![0].getTime()) / 1000n,
+          BigInt(dateRange![1].getTime()) / 1000n,
+          `${destination ?? 'NON'}\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0`
         )
         .send()
         .wait();
+      } else {
+        // give participant entitlement
+        await escrowContract.methods
+        .give_recurring_entitlement(
+          AztecAddress.fromString(recipient.address),
+          toUSDCDecimals(amount),
+          VERIFIERS[verifier]
+        )
+        .send().wait();
+      }
       setEntitlements((prev) => [
         ...prev,
-        { paidOut: 0, spot: false, title: ENTITLEMENT_TITLES[2] },
+        { maxAmount: undefined, paidOut: undefined, spot, title: ENTITLEMENT_TITLES[2] },
       ]);
-      toast.success(`Entitlement added for recipient: ${recipient.address}`);
+      toast.success(`${spot ? 'Spot' : 'Recurring'} entitlement added for recipient: ${recipient.address}`);
     } catch (err) {
       toast.error('Error occurred adding entitlement');
       console.log('Error: ', err);
@@ -179,8 +195,8 @@ export default function RecipientDataModal({
                       >
                         <X size={16} />
                       </div>
-                      {!!entitlement.maxAmount && <div>Max amount: ${entitlement.maxAmount.toLocaleString('en-US')}</div>}
-                      {!!entitlement.paidOut && <div>Paid out: ${entitlement.paidOut}</div>}
+                      {/* {!!entitlement.maxAmount && <div>Max amount: ${formatUSDC(entitlement.maxAmount)}</div>}
+                      {!!entitlement.paidOut && <div>Paid out: ${formatUSDC(entitlement.paidOut)}</div>} */}
                     </div>
                   </div>
                 ))
@@ -199,7 +215,7 @@ export default function RecipientDataModal({
       <AddEntitlementModal
         loading={addingEntitlement}
         onClose={() => setShowEntitlementModal(false)}
-        onFinish={(amount, verifier, spot) => addEntitlement(amount, verifier, spot)}
+        onFinish={(amount, verifier, spot, dateRange, destination) => addEntitlement(amount, verifier, spot, dateRange, destination)}
         open={showEntitlementModal}
       />
       <ConfirmationModal
