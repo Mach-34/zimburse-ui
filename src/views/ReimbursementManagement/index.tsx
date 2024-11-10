@@ -16,6 +16,7 @@ import Loader from '../../components/Loader';
 import useEscrowContract from '../../hooks/useEscrowContract';
 import useRegistryContract from '../../hooks/useRegistryContract';
 import { ArrowLeft } from 'lucide-react';
+import PaymentChart from "../../components/PaymentChart";
 
 const POLICIES = [
   {
@@ -245,14 +246,14 @@ export default function ReimbursementManagementView(): JSX.Element {
                   {formatUSDC(escrowData.activeSpot)}
                 </div>
               </div>
-              <div className='basis-7/12 bg-zimburseGray flex flex-col items-end min-h-0 p-4'>
+              <div className='basis-7/12 bg-zimburseGray'>
                 {/* <button
                   className='bg-zimburseBlue ml-auto px-2 py-1'
                   onClick={() => setShowPolicyModal(true)}
                 >
                   Add Policy
                 </button> */}
-                <div className='mt-4 overflow-y-auto w-full'>
+                {/* <div className='mt-4 overflow-y-auto w-full'>
                   {POLICIES.map((policy, index) => (
                     <Policy
                       activeY={policy.activeY}
@@ -267,7 +268,8 @@ export default function ReimbursementManagementView(): JSX.Element {
                       type={policy.type}
                     />
                   ))}
-                </div>
+                </div> */}
+                <PaymentChart />
               </div>
             </div>
             <div className='flex flex-col justify-between w-1/2'>
