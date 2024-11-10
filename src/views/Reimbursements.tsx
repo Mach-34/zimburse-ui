@@ -29,7 +29,7 @@ import { EmailDisplayData, extractLinodeData, extractUnitedData } from "../utils
 
 const emailTypes: { [key: number]: string } = {
   2: 'Linode',
-  3: 'United'
+  5: 'United'
 };
 
 const MAX_CHUNK_SIZE = 2048;
@@ -234,7 +234,7 @@ export default function ReimbursementsView(): JSX.Element {
     const arrayBuff = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuff);
     // extract email info
-    if(entitlements[selectedEntitlement].verifier === 3) {
+    if(entitlements[selectedEntitlement].verifier === 5) {
       const extractedData = await extractUnitedData(buffer);
       setEmail({data: extractedData, raw: buffer})
     } else {

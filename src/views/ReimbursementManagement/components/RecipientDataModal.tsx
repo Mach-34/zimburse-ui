@@ -27,7 +27,7 @@ type Entitlement = {
 
 const TABS = ['Historical', 'Active'];
 
-export const VERIFIERS: {[key: string]: number} = {'Linode': 2, 'United': 3 };
+export const VERIFIERS: {[key: string]: number} = {'Linode': 2, 'United': 5 };
 
 export default function RecipientDataModal({
   escrowContract,
