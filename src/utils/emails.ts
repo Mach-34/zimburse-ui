@@ -72,6 +72,7 @@ export const extractUnitedData = async (email: Buffer): Promise<EmailDisplayData
 
     const body = Buffer.from(decoded_body!.storage.map(v => Number(v))).toString('utf8');
 
+
     // extract amount
     const totalIndex = body.indexOf('Total:');
     const amountEnd = body.indexOf(' USD', totalIndex);

@@ -19,7 +19,7 @@ import {
 } from '@mach-34/zimburse/dist/src/email_inputs/united';
 import { addPendingShieldNoteToPXE } from '@mach-34/zimburse/dist/src/contract_drivers/notes';
 import { toast } from 'react-toastify';
-import { computeSecretHash, Fr } from '@aztec/aztec.js';
+import { computeSecretHash, Fr, TxHash } from '@aztec/aztec.js';
 import {
   fromUSDCDecimals,
 } from '@mach-34/zimburse/dist/src/utils';
@@ -138,67 +138,77 @@ export default function ReimbursementsView(): JSX.Element {
     setFetchingEscrows(false);
   };
 
-  // const reimburseLinode = async (email: Buffer): TxHash => {
+  const claimLinode = async (escrow: ZImburseEscrowContract, secretHash: Fr, spot: boolean): Promise<TxHash> => {
+    const inputs = await makeLinodeInputs(email!.raw);
+    const formattedInputs = formatRedeemLinode(inputs);
 
-  //   const inputs = await makeLinodeInputs(email);
-  //   const formattedInputs = formatRedeemLinode(inputs);
+    if(spot) {
+      const { txHash } =  await escrow.methods
+      .reimburse_linode_spot(formattedInputs, secretHash)
+      .send()
+      .wait();
+      return txHash
+    } else {
+      const {txHash} = await escrow.methods
+      .reimburse_linode_recurring(formattedInputs, secretHash)
+      .send()
+      .wait();
+      return txHash;
+    }
+  }
 
-  //   // extract email details
-  // }
+  const claimUnited = async (escrow: ZImburseEscrowContract, secretHash: Fr): Promise<TxHash> => {
+        const { deferred, inputs } = await makeUnitedInputs(email!.raw);
+      const formattedInputs = toContractFriendly(inputs);
+
+      const amountToDateLength: number = deferred.amountToDateBody.length;
+      const remainingLength: number = deferred.remainingBody.length;
+
+      let capsules = breakIntoCapsules(deferred.remainingBody.map((val: string) => parseInt(val)));
+      for (const capsule of capsules)
+          await account!.addCapsule(capsule);
+      capsules = breakIntoCapsules(deferred.amountToDateBody.map((val: string) => parseInt(val)));
+      for (const capsule of capsules)
+          await account!.addCapsule(capsule);
+
+      const { txHash } = await escrow.methods.reimburse_united_spot(
+        formattedInputs,
+        amountToDateLength,
+        remainingLength,
+        deferred.actualLength,
+        secretHash
+      ).send().wait();
+      return txHash;
+  }
 
   const submitClaim = async () => {
     if (!account || !email || !tokenContract) return;
     try {
       setRedeemingEntitlement(true);
-      const escrowAddress = entitlements[selectedEntitlement].escrow;
+      const { escrow: escrowAddress, spot, verifier } = entitlements[selectedEntitlement];
       const escrowContract = await ZImburseEscrowContract.at(
         escrowAddress,
         account
       );
 
-    const inputs = await makeLinodeInputs(email.raw);
-    const formattedInputs = formatRedeemLinode(inputs);
-
-      // const { deferred, inputs } = await makeUnitedInputs(buffer);
-      // const formattedInputs = toContractFriendly(inputs);
-
-      // const amountToDateLength: number = deferred.amountToDateBody.length;
-      // console.log("amount to date length", amountToDateLength);
-      // const remainingLength: number = deferred.remainingBody.length;
-      // console.log("remaining length", remainingLength);
-
       const secret = Fr.random();
       const secretHash = computeSecretHash(secret);
 
-      // hardcode amount to 22 for now
-      const amount = toUSDCDecimals('1717.85');
+      let txHash = TxHash.ZERO;
+      if(verifier === 2) {
+        txHash = await claimLinode(escrowContract, secretHash, spot);
+      } else {
+        txHash = await claimUnited(escrowContract, secretHash);
+      }
 
-      const receipt = await escrowContract.methods
-        .reimburse_linode_recurring(formattedInputs, secretHash)
-        .send()
-        .wait();
-
-      // let capsules = breakIntoCapsules(deferred.remainingBody.map((val: string) => parseInt(val)));
-      // for (const capsule of capsules)
-      //     await account.addCapsule(capsule);
-      // capsules = breakIntoCapsules(deferred.amountToDateBody.map((val: string) => parseInt(val)));
-      // for (const capsule of capsules)
-      //     await account.addCapsule(capsule);
-
-      // const receipt = await escrowContract.methods.reimburse_united_spot(
-      //   formattedInputs,
-      //   amountToDateLength,
-      //   remainingLength,
-      //   deferred.actualLength,
-      //   secretHash
-      // ).send().wait();
+      const amount = email.data.amount;
 
       await addPendingShieldNoteToPXE(
         account,
         AztecAddress.fromString(USDC_CONTRACT),
         amount,
         secretHash,
-        receipt.txHash
+        txHash
       );
 
       await tokenContract.methods
