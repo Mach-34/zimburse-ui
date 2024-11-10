@@ -119,6 +119,7 @@ export default function AddEntitlementModal({
                 </div>
               </div>
             </div>
+        {!isLinode &&
         <div>
           <div className="mt-4">Destination</div>
           <input
@@ -128,6 +129,7 @@ export default function AddEntitlementModal({
             value={destination}
           />
         </div>
+        }
             </>
         }
         </div>

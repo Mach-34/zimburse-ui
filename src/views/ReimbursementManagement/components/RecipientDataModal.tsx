@@ -81,7 +81,7 @@ export default function RecipientDataModal({
       }
       setEntitlements((prev) => [
         ...prev,
-        { maxAmount: toUSDCDecimals(amount), paidOut: undefined, spot, title: ENTITLEMENT_TITLES[2] },
+        { maxAmount: toUSDCDecimals(amount), paidOut: undefined, spot, title: ENTITLEMENT_TITLES[VERIFIERS[verifier]] },
       ]);
       toast.success(`${spot ? 'Spot' : 'Recurring'} entitlement added for recipient: ${recipient.address}`);
     } catch (err) {
@@ -124,6 +124,7 @@ export default function RecipientDataModal({
       .map((entitlement: any) => ({
         maxAmount: fromU128(entitlement.max_value),
         paidOut: entitlement.spot ? undefined : 0n,
+        spot: entitlement.spot,
         title: ENTITLEMENT_TITLES[entitlement.verifier_id as number],
       }));
     setEntitlements(formattedEntitlements);

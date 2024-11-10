@@ -183,9 +183,9 @@ export default function ReimbursementsView(): JSX.Element {
 
   const submitClaim = async () => {
     if (!account || !email || !tokenContract) return;
+    const { escrow: escrowAddress, spot, verifier } = entitlements[selectedEntitlement];
     try {
       setRedeemingEntitlement(true);
-      const { escrow: escrowAddress, spot, verifier } = entitlements[selectedEntitlement];
       const escrowContract = await ZImburseEscrowContract.at(
         escrowAddress,
         account
@@ -221,10 +221,10 @@ export default function ReimbursementsView(): JSX.Element {
         private: prev.private + amount,
       }));
 
-      toast.success('Successfully redeemed Linode entitlement!');
+      toast.success(`Successfully redeemed ${emailTypes[verifier]} entitlement!`);
     } catch (err) {
       console.log('Error: ', err);
-      toast.error('Failed to redeem linode entitlement');
+      toast.error(`Failed to redeem ${emailTypes[verifier]} entitlement`);
     } finally {
       setRedeemingEntitlement(false);
     }
