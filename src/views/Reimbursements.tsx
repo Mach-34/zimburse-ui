@@ -24,15 +24,8 @@ import {
   fromUSDCDecimals,
 } from '@mach-34/zimburse/dist/src/utils';
 import { formatUSDC, fromU128, toUSDCDecimals } from "../utils";
-
-type Entitlement = {
-  id: string;
-  escrow: AztecAddress;
-  paidOut: bigint;
-  maxClaimmable: bigint;
-  spot: boolean;
-  title: string;
-};
+import moment from "moment";
+import { EmailDisplayData, extractLinodeData, extractUnitedData } from "../utils/emails";
 
 const emailTypes: { [key: number]: string } = {
   2: 'Linode',
@@ -40,6 +33,23 @@ const emailTypes: { [key: number]: string } = {
 };
 
 const MAX_CHUNK_SIZE = 2048;
+
+type Entitlement = {
+  id: string;
+  acceptedDates: number[],
+  destination: string;
+  escrow: AztecAddress;
+  paidOut: bigint;
+  maxClaimmable: bigint;
+  spot: boolean;
+  verifier: number;
+  title: string;
+};
+
+type UploadedFile = {
+  data: EmailDisplayData;
+  raw: Buffer
+}
 
 /**
  * Breaks u8 array into capsules
@@ -71,7 +81,7 @@ export default function ReimbursementsView(): JSX.Element {
   const { account, setTokenBalance, tokenContract } = useAztec();
   const registryContract = useRegistryContract(ESCROW_REGISTRY_CONTRACT);
 
-  const [emailFile, setEmailFile] = useState<File | null>(null);
+  const [email, setEmail] = useState<UploadedFile | null>(null);
   const [entitlements, setEntitlements] = useState<Array<Entitlement>>([]);
   const [fetchingEscrows, setFetchingEscrows] = useState<boolean>(true);
   const [redeemingEntitlement, setRedeemingEntitlement] =
@@ -113,11 +123,12 @@ export default function ReimbursementsView(): JSX.Element {
           .map((entitlement: any, index: number) => {
             return {
               id: `${escrowContract.address.toString()}-${index}`,
+              acceptedDates: entitlement.spot ? [Number(entitlement.date_start * 1000n), Number(entitlement.date_end * 1000n)] : [0, 0],
               escrow: escrowContract.address,
-              paidOut: 0,
-              // TODO: Comibne hi and lo
+              paidOut: 0n,
               maxClaimmable: fromU128(entitlement.max_value),
               spot: entitlement.spot,
+              verifier: Number(entitlement.verifier_id),
               title: ENTITLEMENT_TITLES[entitlement.verifier_id],
             };
           })
@@ -127,10 +138,16 @@ export default function ReimbursementsView(): JSX.Element {
     setFetchingEscrows(false);
   };
 
+  // const reimburseLinode = async (email: Buffer): TxHash => {
+
+  //   const inputs = await makeLinodeInputs(email);
+  //   const formattedInputs = formatRedeemLinode(inputs);
+
+  //   // extract email details
+  // }
+
   const submitClaim = async () => {
-    if (!account || !emailFile || !tokenContract) return;
-    const arrayBuff = await emailFile.arrayBuffer();
-    const buffer = Buffer.from(arrayBuff);
+    if (!account || !email || !tokenContract) return;
     try {
       setRedeemingEntitlement(true);
       const escrowAddress = entitlements[selectedEntitlement].escrow;
@@ -139,16 +156,16 @@ export default function ReimbursementsView(): JSX.Element {
         account
       );
 
-      // const inputs = await makeLinodeInputs(buffer);
-      // const formattedInputs = formatRedeemLinode(inputs);
+    const inputs = await makeLinodeInputs(email.raw);
+    const formattedInputs = formatRedeemLinode(inputs);
 
-      const { deferred, inputs } = await makeUnitedInputs(buffer);
-      const formattedInputs = toContractFriendly(inputs);
+      // const { deferred, inputs } = await makeUnitedInputs(buffer);
+      // const formattedInputs = toContractFriendly(inputs);
 
-      const amountToDateLength: number = deferred.amountToDateBody.length;
-      console.log("amount to date length", amountToDateLength);
-      const remainingLength: number = deferred.remainingBody.length;
-      console.log("remaining length", remainingLength);
+      // const amountToDateLength: number = deferred.amountToDateBody.length;
+      // console.log("amount to date length", amountToDateLength);
+      // const remainingLength: number = deferred.remainingBody.length;
+      // console.log("remaining length", remainingLength);
 
       const secret = Fr.random();
       const secretHash = computeSecretHash(secret);
@@ -156,25 +173,25 @@ export default function ReimbursementsView(): JSX.Element {
       // hardcode amount to 22 for now
       const amount = toUSDCDecimals('1717.85');
 
-      // const receipt = await escrowContract.methods
-      //   .reimburse_linode_recurring(formattedInputs, secretHash)
-      //   .send()
-      //   .wait();
+      const receipt = await escrowContract.methods
+        .reimburse_linode_recurring(formattedInputs, secretHash)
+        .send()
+        .wait();
 
-      let capsules = breakIntoCapsules(deferred.remainingBody.map((val: string) => parseInt(val)));
-      for (const capsule of capsules)
-          await account.addCapsule(capsule);
-      capsules = breakIntoCapsules(deferred.amountToDateBody.map((val: string) => parseInt(val)));
-      for (const capsule of capsules)
-          await account.addCapsule(capsule);
+      // let capsules = breakIntoCapsules(deferred.remainingBody.map((val: string) => parseInt(val)));
+      // for (const capsule of capsules)
+      //     await account.addCapsule(capsule);
+      // capsules = breakIntoCapsules(deferred.amountToDateBody.map((val: string) => parseInt(val)));
+      // for (const capsule of capsules)
+      //     await account.addCapsule(capsule);
 
-      const receipt = await escrowContract.methods.reimburse_united_spot(
-        formattedInputs,
-        amountToDateLength,
-        remainingLength,
-        deferred.actualLength,
-        secretHash
-      ).send().wait();
+      // const receipt = await escrowContract.methods.reimburse_united_spot(
+      //   formattedInputs,
+      //   amountToDateLength,
+      //   remainingLength,
+      //   deferred.actualLength,
+      //   secretHash
+      // ).send().wait();
 
       await addPendingShieldNoteToPXE(
         account,
@@ -203,13 +220,24 @@ export default function ReimbursementsView(): JSX.Element {
     }
   };
 
+  const uploadEmail = async (file: File) => {
+    const arrayBuff = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuff);
+    // extract email info
+    if(entitlements[selectedEntitlement].verifier === 3) {
+      const extractedData = await extractUnitedData(buffer);
+      setEmail({data: extractedData, raw: buffer})
+    } else {
+      const extractedData = await extractLinodeData(buffer);
+      setEmail({data: extractedData, raw: buffer})
+    }
+  }
+
   useEffect(() => {
     (async () => {
       await fetchEscrows();
     })();
   }, [registryContract]);
-
-  console.log('Entitlements: ', entitlements)
 
   return (
     <AppLayout>
@@ -229,7 +257,10 @@ export default function ReimbursementsView(): JSX.Element {
                   <div
                     className='bg-white cursor-pointer mb-4 p-4'
                     key={entitlement.id}
-                    onClick={() => setSelectedEntitlement(index)}
+                    onClick={() => {
+                      setEmail(null);
+                      setSelectedEntitlement(index);
+                    }}
                     style={{
                       border:
                         selectedEntitlement === index
@@ -239,10 +270,10 @@ export default function ReimbursementsView(): JSX.Element {
                   >
                     <div>{entitlement.title}</div>
                     <div className='flex justify-between mt-2 text-sm'>
-                      <div>Org: TODO</div>
+                      <div>{entitlement.spot ? 'Spot' : 'Recurring'}</div>
                       <div>
-                        Amount: $
-                        {/* {formatUSDC(entitlements[selectedEntitlement].maxClaimmable)} */}
+                        Limit: $
+                        {formatUSDC(entitlement.maxClaimmable)}
                       </div>
                     </div>
                   </div>
@@ -263,18 +294,15 @@ export default function ReimbursementsView(): JSX.Element {
                     <div className='mb-6 text-xl'>
                       {entitlements[selectedEntitlement].title}
                     </div>
-                    {emailFile ? (
+                    {email ? (
                       <>
+                        <div className='text-lg'>Claimed amount: ${formatUSDC(email.data.amount)}</div>
+                        <div className='text-lg'>Receipt Date: {moment(email.data.date).format('LL')}</div>
                         <div className='text-lg'>
-                          Email nullifier: xxxxxxxxxxxxxxxxxxxxxxx
-                        </div>
-                        <div className='text-lg'>Claimed amount: $XX.XX</div>
-                        <div className='text-lg'>Receipt Date: 9/1/2024</div>
-                        <div className='text-lg'>
-                          From: 234 Second St, Denver, CO 80223
+                          From: {email.data.from}
                         </div>
                         <div className='text-lg'>
-                          To: 123 Main St, Denver, CO 80223
+                          To: {email.data.to}
                         </div>
                       </>
                     ) : (
@@ -283,13 +311,15 @@ export default function ReimbursementsView(): JSX.Element {
                           Max Claimmable: $
                           {formatUSDC(entitlements[selectedEntitlement].maxClaimmable)}
                         </div>
-                        <div className='text-lg'>Accepted Dates: TODO</div>
-                        <div className='text-lg'>Email type: Linode</div>
+                        {entitlements[selectedEntitlement].spot &&
+                        <div className='text-lg'>Accepted Dates: {moment(entitlements[selectedEntitlement].acceptedDates[0]).format('LL')} - {moment(entitlements[selectedEntitlement].acceptedDates[1]).format('LL')}
+                        </div>}
+                        <div className='text-lg'>Email type: {emailTypes[entitlements[selectedEntitlement].verifier]}</div>
                       </>
                     )}
                   </div>
                   <div className='flex flex-col items-center justify-center w-full'>
-                    {emailFile ? (
+                    {email ? (
                       <button
                         className='bg-[#89B8FF] w-3/5'
                         onClick={() => submitClaim()}
@@ -300,7 +330,7 @@ export default function ReimbursementsView(): JSX.Element {
                       </button>
                     ) : (
                       <div className='w-1/2'>
-                        <button className='bg-[#89B8FF] flex items-center justify-between w-full'>
+                        <button className='bg-[#89B8FF] flex items-center justify-between opacity-50 w-full' disabled={true}>
                           <img alt='Google' src={google} />
                           <div>Import from Gmail</div>
                           <div />
@@ -309,7 +339,7 @@ export default function ReimbursementsView(): JSX.Element {
                           accept='.eml'
                           Icon={Upload}
                           id='Entitlement Claim'
-                          onUpload={(e) => setEmailFile(e.target.files[0])}
+                          onUpload={(e) => uploadEmail(e.target.files[0])}
                           style={{ marginTop: '32px', width: '100%' }}
                           text='Upload .eml'
                         />

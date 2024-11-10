@@ -17,6 +17,7 @@
     "@mach-34/zimburse": "../z-imburse",
     "@shieldswap/vite-plugin-aztec": "^0.0.2",
     "@shieldswap/wallet-sdk": "0.57.0-alpha.3",
+    "@zk-email/zkemail-nr": "^1.2.2",
     "buffer": "^6.0.3",
     "lucide-react": "^0.446.0",
     "moment": "^2.30.1",

@@ -44,6 +44,10 @@ export default function AddEntitlementModal({
     }
   }
 
+  const isLinode = useMemo(() => {
+    return verifier === 'Linode'
+  }, [verifier]);
+
   useEffect(() => {
     setAmount('');
   }, [open]);
@@ -58,16 +62,30 @@ export default function AddEntitlementModal({
   return (
     <Modal height={85} onClose={onClose} open={open} width={60}>
       <X className='ml-auto' cursor='pointer' onClick={() => onClose()} />
-      <div className='flex flex-col h-[75%] items-center justify-between mt-4'>
+      <div className='flex flex-col h-[85%] gap-2 items-center justify-between mt-4'>
         <div className='text-2xl'>Add Entitlement</div>
         <div className='text-center text-xl'>
-          <div className='my-2'>Verifier Type</div>
+          <div className="flex gap-10 items-center justify-center">
+          <div>
+          <div className='mb-2'>Verifier Type</div>
           <Select
             onChange={setVerifier}
             placeholder='Select entitlement'
             selected={verifier}
             options={Object.keys(VERIFIERS)}
           />
+          </div>
+          {isLinode && 
+            <div>
+                <label className='mr-2'>Spot</label>
+                <input
+                  checked={spot}
+                  onChange={() => setSpot(!spot)}
+                  type='checkbox'
+                />
+            </div>
+          }
+          </div>
           <div className="mt-4">Amount</div>
           <input
             className='bg-zimburseGray my-2'
@@ -75,30 +93,22 @@ export default function AddEntitlementModal({
             placeholder="Enter amount"
             value={amount}
           />
-            <div className='mt-2'>
-              <label className='mr-2'>Spot</label>
-              <input
-                checked={spot}
-                onChange={() => setSpot(!spot)}
-                type='checkbox'
-              />
-            </div>
-          {spot && <>
-               <div className='flex gap-2 justify-center mt-10 text-xl'>
-              <div className="flex items-center gap-2">Claimmable dates<CalendarIcon
-                  className='bg-[#939393] p-0.5'
+          {(spot || !isLinode) && <>
+               <div className='flex gap-2 justify-center'>
+              <div className="flex items-center gap-2 text-base">Claimmable<CalendarIcon
+                  className='bg-[#939393] p-0.5 shrink-0'
                   color='white'
                   onClick={() => setShowCalendar(!showCalendar)}
                   size={20}
                 />: </div>
               <div
-                className='flex justify-between overflow-visible p-1 relative w-20'
+                className='flex justify-between items-center overflow-visible p-1 relative w-full'
               >
                 <div className="flex justify-between w-full">
-                <div className="mr-10">From: {moment((dateRange as Date[])[0]).format('l')}</div>
-                <div>To: {moment((dateRange as Date[])[1]).format('l')}</div>
+                <div className="bg-zimburseGray mr-8 p-1 text-sm">From: {moment((dateRange as Date[])[0]).format('l')}</div>
+                <div className="bg-zimburseGray p-1 text-sm">To: {moment((dateRange as Date[])[1]).format('l')}</div>
                 </div>
-                <div className='absolute left-0 top-[calc(100%+10px)] w-[400px]' ref={calendarRef}>
+                <div className='absolute left-0 top-[calc(0% + 10px)]' ref={calendarRef}>
                   {showCalendar && (
                     <Calendar
                       onChange={setDateRange}
@@ -109,13 +119,15 @@ export default function AddEntitlementModal({
                 </div>
               </div>
             </div>
-            <div className="mt-4">Destination</div>
+        <div>
+          <div className="mt-4">Destination</div>
           <input
-            className='bg-zimburseGray my-2'
+            className='bg-zimburseGray mt-2'
             onChange={(e) => setDestination(e.target.value)}
             placeholder="Enter destination"
             value={destination}
           />
+        </div>
             </>
         }
         </div>

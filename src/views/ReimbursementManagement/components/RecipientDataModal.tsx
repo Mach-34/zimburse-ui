@@ -19,7 +19,7 @@ type RecipientDataModalProps = {
 } & Omit<ModalProps, 'children'>;
 
 type Entitlement = {
-  maxAmount?: bigint;
+  maxAmount: bigint;
   paidOut?: bigint;
   title: string;
   spot: boolean;
@@ -56,7 +56,7 @@ export default function RecipientDataModal({
     setAddingEntilement(true);
 
     try {
-      if(spot) {
+      if(spot || verifier === 'United') {
         // give participant entitlement
         await escrowContract.methods
         .give_spot_entitlement(
@@ -81,7 +81,7 @@ export default function RecipientDataModal({
       }
       setEntitlements((prev) => [
         ...prev,
-        { maxAmount: undefined, paidOut: undefined, spot, title: ENTITLEMENT_TITLES[2] },
+        { maxAmount: toUSDCDecimals(amount), paidOut: undefined, spot, title: ENTITLEMENT_TITLES[2] },
       ]);
       toast.success(`${spot ? 'Spot' : 'Recurring'} entitlement added for recipient: ${recipient.address}`);
     } catch (err) {
@@ -89,13 +89,12 @@ export default function RecipientDataModal({
       console.log('Error: ', err);
     } finally {
       setAddingEntilement(false);
+      setShowEntitlementModal(false);
     }
   };
 
   const nullifyEntitlement = async () => {
     if (!escrowContract) return;
-
-    console.log('Recipient address: ', recipient.address)
 
     await escrowContract.methods
       .revoke_entitlement(AztecAddress.fromString(recipient.address), 2, false)
@@ -123,8 +122,8 @@ export default function RecipientDataModal({
     const formattedEntitlements = storage
       .slice(0, Number(len))
       .map((entitlement: any) => ({
-        maxAmount: fromUSDCDecimals(fromU128(entitlement.max_value)).integer,
-        paidOut: 10,
+        maxAmount: fromU128(entitlement.max_value),
+        paidOut: entitlement.spot ? undefined : 0n,
         title: ENTITLEMENT_TITLES[entitlement.verifier_id as number],
       }));
     setEntitlements(formattedEntitlements);
@@ -195,8 +194,8 @@ export default function RecipientDataModal({
                       >
                         <X size={16} />
                       </div>
-                      {/* {!!entitlement.maxAmount && <div>Max amount: ${formatUSDC(entitlement.maxAmount)}</div>}
-                      {!!entitlement.paidOut && <div>Paid out: ${formatUSDC(entitlement.paidOut)}</div>} */}
+                      <div>Max amount: ${formatUSDC(entitlement.maxAmount)}</div>
+                      {entitlement.paidOut !== undefined && <div>Paid out: ${formatUSDC(entitlement.paidOut)}</div>}
                     </div>
                   </div>
                 ))

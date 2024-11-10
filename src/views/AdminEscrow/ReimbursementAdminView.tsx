@@ -25,7 +25,7 @@ type EscrowGroup = {
   title: string;
 };
 
-export default function ReimbursementSetupView(): JSX.Element {
+export default function ReimbursementAdminView(): JSX.Element {
   const { account, viewOnlyAccount, tokenContract } = useAztec();
   const registryContract = useRegistryContract(ESCROW_REGISTRY_CONTRACT);
 
@@ -59,7 +59,13 @@ export default function ReimbursementSetupView(): JSX.Element {
 
       setGroups((prev: any) => [
         ...prev,
-        { id: escrow.address.toString(), title: name },
+        {       
+          activeMonthly: 0n,
+          activeSpot: 0n,
+          escrowed: 0n, 
+          id: escrow.address.toString(), 
+          title: name 
+        },
       ]);
       toast.success('Created escrow group!');
     } catch (err) {
