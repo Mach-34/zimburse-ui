@@ -22,7 +22,7 @@ import { Eip1193Account } from '@shieldswap/wallet-sdk/eip1193';
 import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
 import { getSchnorrAccount } from '@aztec/accounts/schnorr';
 import { TokenContract } from '../artifacts';
-import { fromUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
+import { fromUSDCDecimals } from "../utils";
 
 type AztecContextProps = {
   account: Eip1193Account | undefined;
@@ -51,7 +51,7 @@ const DEFAULT_AZTEC_CONTEXT_PROPS = {
   fetchingTokenBalance: false,
   registryAdmin: undefined,
   setTokenBalance: (() => {}) as Dispatch<SetStateAction<TokenBalance>>,
-  tokenBalance: { private: 0, public: 0 },
+  tokenBalance: { private: 0n, public: 0n },
   tokenContract: undefined,
   viewOnlyAccount: undefined,
 };
@@ -61,8 +61,8 @@ const AztecContext = createContext<AztecContextProps>(
 );
 
 type TokenBalance = {
-  private: number;
-  public: number;
+  private: bigint;
+  public: bigint;
 };
 
 const pxe = createPXEClient(DEFAULT_PXE_URL);
@@ -85,8 +85,8 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
   const [fetchingTokenBalance, setFetchingTokenBalance] =
     useState<boolean>(false);
   const [tokenBalance, setTokenBalance] = useState<TokenBalance>({
-    private: 0,
-    public: 0,
+    private: 0n,
+    public: 0n,
   });
   const [tokenContract, setTokenContract] = useState<TokenContract | undefined>(
     undefined
@@ -125,8 +125,8 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         .simulate();
 
       setTokenBalance({
-        private: Number(fromUSDCDecimals(privateBalance)),
-        public: Number(fromUSDCDecimals(publicBalance)),
+        private: privateBalance,
+        public: publicBalance,
       });
       setTokenContract(contract);
       setFetchingTokenBalance(false);

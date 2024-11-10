@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import Modal, { ModalProps } from '../../../components/Modal';
 import { useEffect, useState } from 'react';
 import Loader from '../../../components/Loader';
+import AddEntitlementModal from './AddEntitlementModal';
 
 type AddRecipientModalProps = {
   loading: boolean;

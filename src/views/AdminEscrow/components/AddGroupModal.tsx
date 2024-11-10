@@ -26,6 +26,12 @@ export default function AddGroupModal({
     }
   }, [addingGroup, name]);
 
+  const handleName = (val: string) => {
+    if (val.length < 60) {
+      setName(val);
+    }
+  };
+
   useEffect(() => {
     setName('');
   }, [open]);
@@ -42,9 +48,17 @@ export default function AddGroupModal({
         <X className='ml-auto' cursor='pointer' onClick={() => onClose()} />
         <div className='flex flex-col h-full items-center justify-between pt-4'>
           <div>Create new Z-Imburse Escrow Group</div>
-          <div className='flex gap-10'>
-            <div>Name: </div>
-            <input onChange={(e) => setName(e.target.value)} value={name} />
+          <div>
+            <div className='flex gap-10'>
+              <div>Name: </div>
+              <input
+                onChange={(e) => handleName(e.target.value)}
+                value={name}
+              />
+            </div>
+            <div className='mt-2 text-xs text-center'>
+              (Max character limit of 60)
+            </div>
           </div>
           <button
             className='bg-[#7896FF] flex gap-2 items-center'
