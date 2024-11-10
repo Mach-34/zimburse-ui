@@ -5,6 +5,10 @@ import useOutsideAlerter from '../hooks/useOutsideAlerter';
 import Loader from './Loader';
 import { toast } from 'react-toastify';
 import { toUSDCDecimals } from "../utils";
+import logo from '../assets/logo.png'
+import usdc from '../assets/usdc.png';
+import { Lock, LockOpen, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function Header(): JSX.Element {
   const {
@@ -18,6 +22,7 @@ export default function Header(): JSX.Element {
     tokenBalance,
     tokenContract,
   } = useAztec();
+  const navigate = useNavigate();
   const menuRef = useRef(null);
   const [minting, setMinting] = useState<boolean>(false);
   const [showMenu, setShowMenu] = useState<boolean>(false);
@@ -62,7 +67,9 @@ export default function Header(): JSX.Element {
   }, [account, connecting]);
 
   return (
-    <div className='flex gap-4 items-center justify-end py-5 px-10'>
+    <div className='flex items-center justify-between py-5 px-10'>
+      <img alt="Logo" className="cursor-pointer h-10 w-10" onClick={() => navigate('/')} src={logo} />
+      <div className="flex gap-4 items-center">
       {account &&
         (fetchingTokenBalance ? (
           <div className='flex gap-2 items-center mr-8'>
@@ -71,22 +78,30 @@ export default function Header(): JSX.Element {
           </div>
         ) : (
           <>
-            <button
-              className='flex gap-2 items-center rounded-full p-1 px-2'
+            <div className='border border-black border-solid p-1 rounded'>
+              <div className="flex items-center gap-4">
+                <div>
+                  <div className="flex gap-1 items-center">
+              <div>Balance</div>
+              <img alt="USDC" className="h-4 w-4" src={usdc} />
+              </div>
+              <button
+              className='bg-green-600 flex gap-2 items-center rounded-full px-2 py-1 text-white text-xs/[10px]'
               onClick={() => mintUsdc()}
             >
-              {minting ? 'Minting USDC...' : 'Mint USDC'}
-              {minting && <Loader size={18} />}
+              {minting ? 'Minting...' : 'Mint'}
+              {!minting && <Plus size={12}/>}
+              {minting && <Loader size={12} />}
             </button>
-            <div className='flex gap-2 items-center'>
-              <div>USDC Balance</div>
+              </div>
               <div>
-                <div className='text-xs'>
-                  Public: ${formatUSDC(tokenBalance.public)}
+                <div className='flex items-center text-xs'>
+                  Public <LockOpen className="mx-1" size={12}/>: ${formatUSDC(tokenBalance.public)}
                 </div>
-                <div className='text-xs'>
-                  Private: ${formatUSDC(tokenBalance.private)}
+                <div className='flex items-center text-xs'>
+                  Private <Lock className="mx-1" size={12}/>: ${formatUSDC(tokenBalance.private)}
                 </div>
+              </div>
               </div>
             </div>
           </>
@@ -111,6 +126,7 @@ export default function Header(): JSX.Element {
             </div>
           )}
         </button>
+      </div>
       </div>
     </div>
   );
