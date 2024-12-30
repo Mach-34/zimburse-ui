@@ -9,7 +9,6 @@ import { toast } from 'react-toastify';
 import { AztecAddress } from '@aztec/circuits.js';
 import Loader from '../../components/Loader';
 import useRegistryContract from '../../hooks/useRegistryContract';
-import { fromUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
 import { formatUSDC } from "../../utils";
 
 const {

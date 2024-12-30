@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 import Modal, { ModalProps } from '../../../components/Modal';
 import { useEffect, useState } from 'react';
 import ConfirmationModal from './ConfirmationModal';
-import { formatUSDC, fromU128, fromUSDCDecimals, truncateAddress } from '../../../utils';
+import { formatUSDC, fromU128, truncateAddress } from '../../../utils';
 import { useAztec } from '../../../contexts/AztecContext';
 import { ZImburseEscrowContract } from '../../../artifacts';
 import { AztecAddress } from '@aztec/circuits.js';

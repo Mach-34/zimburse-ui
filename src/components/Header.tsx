@@ -37,7 +37,7 @@ export default function Header(): JSX.Element {
       setMinting(true);
       await tokenContract
         .withWallet(registryAdmin)
-        .methods.mint_public(
+        .methods.mint_to_public(
           account.getAddress(),
           MINT_AMOUNT
         )

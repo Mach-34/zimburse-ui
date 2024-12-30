@@ -9,21 +9,17 @@ import { useAztec } from '../contexts/AztecContext';
 import useRegistryContract from '../hooks/useRegistryContract';
 import Loader from '../components/Loader';
 import { ENTITLEMENT_TITLES } from '../utils/constants';
-import {
-  makeLinodeInputs,
-  formatRedeemLinode,
-} from '@mach-34/zimburse/dist/src/email_inputs/linode';
-import {
-  makeUnitedInputs,
-  toContractFriendly
-} from '@mach-34/zimburse/dist/src/email_inputs/united';
-import { addPendingShieldNoteToPXE } from '@mach-34/zimburse/dist/src/contract_drivers/notes';
+// import {
+//   makeLinodeInputs,
+//   formatRedeemLinode,
+// } from '@mach-34/zimburse/dist/src/email_inputs/linode';
+// import {
+//   makeUnitedInputs,
+//   toContractFriendly
+// } from '@mach-34/zimburse/dist/src/email_inputs/united';
 import { toast } from 'react-toastify';
-import { computeSecretHash, Fr, TxHash } from '@aztec/aztec.js';
-import {
-  fromUSDCDecimals,
-} from '@mach-34/zimburse/dist/src/utils';
-import { formatUSDC, fromU128, toUSDCDecimals } from "../utils";
+import { Fr, TxHash } from '@aztec/aztec.js';
+import { formatUSDC, fromU128} from "../utils";
 import moment from "moment";
 import { EmailDisplayData, extractLinodeData, extractUnitedData } from "../utils/emails";
 
@@ -138,26 +134,26 @@ export default function ReimbursementsView(): JSX.Element {
     setFetchingEscrows(false);
   };
 
-  const claimLinode = async (escrow: ZImburseEscrowContract, secretHash: Fr, spot: boolean): Promise<TxHash> => {
-    const inputs = await makeLinodeInputs(email!.raw);
-    const formattedInputs = formatRedeemLinode(inputs);
+  // const claimLinode = async (escrow: ZImburseEscrowContract, spot: boolean): Promise<TxHash> => {
+  //   const inputs = await makeLinodeInputs(email!.raw);
+  //   const formattedInputs = formatRedeemLinode(inputs);
 
-    if(spot) {
-      const { txHash } =  await escrow.methods
-      .reimburse_linode_spot(formattedInputs, secretHash)
-      .send()
-      .wait();
-      return txHash
-    } else {
-      const {txHash} = await escrow.methods
-      .reimburse_linode_recurring(formattedInputs, secretHash)
-      .send()
-      .wait();
-      return txHash;
-    }
-  }
+  //   if(spot) {
+  //     const { txHash } =  await escrow.methods
+  //     .reimburse_linode_spot(formattedInputs)
+  //     .send()
+  //     .wait();
+  //     return txHash
+  //   } else {
+  //     const {txHash} = await escrow.methods
+  //     .reimburse_linode_recurring(formattedInputs)
+  //     .send()
+  //     .wait();
+  //     return txHash;
+  //   }
+  // }
 
-  const claimUnited = async (escrow: ZImburseEscrowContract, secretHash: Fr): Promise<TxHash> => {
+  const claimUnited = async (escrow: ZImburseEscrowContract): Promise<TxHash> => {
         const { deferred, inputs } = await makeUnitedInputs(email!.raw);
       const formattedInputs = toContractFriendly(inputs);
 
@@ -176,7 +172,6 @@ export default function ReimbursementsView(): JSX.Element {
         amountToDateLength,
         remainingLength,
         deferred.actualLength,
-        secretHash
       ).send().wait();
       return txHash;
   }
@@ -191,31 +186,14 @@ export default function ReimbursementsView(): JSX.Element {
         account
       );
 
-      const secret = Fr.random();
-      const secretHash = computeSecretHash(secret);
-
       let txHash = TxHash.ZERO;
       if(verifier === 2) {
-        txHash = await claimLinode(escrowContract, secretHash, spot);
+        // txHash = await claimLinode(escrowContract, spot);
       } else {
-        txHash = await claimUnited(escrowContract, secretHash);
+        txHash = await claimUnited(escrowContract);
       }
 
       const amount = email.data.amount;
-
-      await addPendingShieldNoteToPXE(
-        account,
-        AztecAddress.fromString(USDC_CONTRACT),
-        amount,
-        secretHash,
-        txHash
-      );
-
-      await tokenContract.methods
-        .redeem_shield(account.getAddress(), amount, secret)
-        .send()
-        .wait();
-
       setTokenBalance((prev) => ({
         ...prev,
         private: prev.private + amount,
