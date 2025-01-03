@@ -1,3 +1,10 @@
+import { AztecAddress, Fr } from "@aztec/circuits.js";
+
+export type AztecAccount = {
+    address: AztecAddress;
+    secretKey: Fr;
+}
+
 export const DEFAULT_PXE_URL = 'http://localhost:8080'
 
 export const ENTITLEMENT_TITLES: { [key: number]: string } = {
@@ -6,3 +13,5 @@ export const ENTITLEMENT_TITLES: { [key: number]: string } = {
 };
 
 export const NUMBER_INPUT_REGEX = /^\d*\.?\d{0,6}$/;
+
+export const ZIMBURSE_LS_KEY = 'zimburse_wallet';

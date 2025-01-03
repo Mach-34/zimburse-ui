@@ -2,8 +2,6 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from "vite";
 import { PolyfillOptions, nodePolyfills } from "vite-plugin-node-polyfills";
 import topLevelAwait from "vite-plugin-top-level-await";
-import commonjs from '@rollup/plugin-commonjs';
-import path from 'path';
 
 // Unfortunate, but needed due to https://github.com/davidmyersdev/vite-plugin-node-polyfills/issues/81
 // Suspected to be because of the yarn workspace setup, but not sure
@@ -26,14 +24,6 @@ const nodePolyfillsFix = (options?: PolyfillOptions | undefined): any => {
 // https://vite.dev/config/
 export default defineConfig({
   build: {
-    commonjsOptions: {
-      include: [
-        /node_modules\/@zk-email/,
-        /node_modules\/libmime/,
-        /node_modules\/libbase64/
-      ],
-      transformMixedEsModules: true,
-    },
     target: "esnext",
   },
   server: {
@@ -43,8 +33,7 @@ export default defineConfig({
     },
   },
   plugins: [
-    commonjs(),
-    nodePolyfillsFix({ include: ["buffer", "process", "path"] }),
+    nodePolyfillsFix({ include: ["buffer", "process", "path", "stream"] }),
     react(),
     topLevelAwait(),
   ],

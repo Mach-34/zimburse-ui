@@ -9,10 +9,15 @@ import logo from '../assets/logo.png'
 import usdc from '../assets/usdc.png';
 import { Lock, LockOpen, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { AztecAddress, Fr } from "@aztec/circuits.js";
+import { AztecAccount } from "../utils/constants";
+
+const AZTEC_WALLETS = JSON.parse(import.meta.env.VITE_APP_AZTEC_WALLETS);
 
 export default function Header(): JSX.Element {
   const {
     account,
+    accounts,
     connectWallet,
     connecting,
     disconnectWallet,
@@ -30,6 +35,10 @@ export default function Header(): JSX.Element {
   useOutsideAlerter(menuRef, () => setShowMenu(false));
 
   const MINT_AMOUNT = toUSDCDecimals(10000n);
+
+  const availableWallets = useMemo(() => {
+    return accounts.filter(acc => !acc.address.equals(account?.getAddress() ?? AztecAddress.ZERO))
+  }, [account, accounts]);
 
   const mintUsdc = async () => {
     if (!account || !registryAdmin || !tokenContract) return;
@@ -109,7 +118,7 @@ export default function Header(): JSX.Element {
       <div>
         <button
           className='ml-auto relative'
-          onClick={() => (account ? setShowMenu(!showMenu) : connectWallet())}
+          onClick={() => (account ? setShowMenu(!showMenu) : connectWallet(Fr.fromHexString(AZTEC_WALLETS[0])))}
         >
           {walletButtonText}
           {!!account && showMenu && (
@@ -117,6 +126,14 @@ export default function Header(): JSX.Element {
               className='absolute bg-zimburseGray left-0 rounded top-[calc(100%+12px)] w-full'
               ref={menuRef}
             >
+              {availableWallets.map((wallet: AztecAccount) => (
+                <div
+                  className='cursor-pointer p-4 rounded hover:bg-[#A8A6A6]'
+                  onClick={() => connectWallet(wallet.secretKey)}
+                >
+                  {truncateAddress(wallet.address.toString())}
+                </div>
+              ))}
               <div
                 className='cursor-pointer p-4 rounded hover:bg-[#A8A6A6]'
                 onClick={() => disconnectWallet()}

@@ -37,6 +37,7 @@ export default function ReimbursementAdminView(): JSX.Element {
   const addEscrowGroup = async (name: string) => {
     if (!account || !registryContract) return;
     setAddingGroup(1);
+    console.log('Accounts: ', account);
     try {
       const escrow = await ZImburseEscrowContract.deploy(
         account,
@@ -46,7 +47,6 @@ export default function ReimbursementAdminView(): JSX.Element {
       )
         .send()
         .deployed();
-
       setAddingGroup(2);
 
       // register deployed escrow into registry
@@ -141,7 +141,7 @@ export default function ReimbursementAdminView(): JSX.Element {
 
       const numEscrows = Number(escrowGroups[0].len);
       for (let i = 0; i < numEscrows; i++) {
-        const escrowAddress = escrowGroups[0].storage[i];
+        const escrowAddress = AztecAddress.fromBigInt(escrowGroups[0].storage[i]);
         escrows.push(fetchEscrowData(escrowAddress));
       }
       const escrowData = (await Promise.all(escrows)).filter(
