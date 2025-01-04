@@ -9,14 +9,14 @@ import { useAztec } from '../contexts/AztecContext';
 import useRegistryContract from '../hooks/useRegistryContract';
 import Loader from '../components/Loader';
 import { ENTITLEMENT_TITLES } from '../utils/constants';
-// import {
-//   makeLinodeInputs,
-//   formatRedeemLinode,
-// } from '@mach-34/zimburse/dist/src/email_inputs/linode';
-// import {
-//   makeUnitedInputs,
-//   toContractFriendly
-// } from '@mach-34/zimburse/dist/src/email_inputs/united';
+import {
+  makeLinodeInputs,
+  formatRedeemLinode,
+} from '@mach-34/zimburse/dist/src/email_inputs/linode';
+import {
+  makeUnitedInputs,
+  toContractFriendly
+} from '@mach-34/zimburse/dist/src/email_inputs/united';
 import { toast } from 'react-toastify';
 import { Fr, TxHash } from '@aztec/aztec.js';
 import { formatUSDC, fromU128} from "../utils";
@@ -93,11 +93,11 @@ export default function ReimbursementsView(): JSX.Element {
     const participantEscrows = await registryContract.methods
       .get_participant_escrows(account.getAddress(), 0)
       .simulate();
-
+    
     const { len, storage } = participantEscrows[0];
     for (let i = 0; i < len; i++) {
       const escrowContract = await ZImburseEscrowContract.at(
-        storage[i],
+        AztecAddress.fromBigInt(storage[i]),
         account
       );
       const entitlementsRes = await escrowContract.methods
@@ -134,24 +134,24 @@ export default function ReimbursementsView(): JSX.Element {
     setFetchingEscrows(false);
   };
 
-  // const claimLinode = async (escrow: ZImburseEscrowContract, spot: boolean): Promise<TxHash> => {
-  //   const inputs = await makeLinodeInputs(email!.raw);
-  //   const formattedInputs = formatRedeemLinode(inputs);
+  const claimLinode = async (escrow: ZImburseEscrowContract, spot: boolean): Promise<TxHash> => {
+    const inputs = await makeLinodeInputs(email!.raw);
+    const formattedInputs = formatRedeemLinode(inputs);
 
-  //   if(spot) {
-  //     const { txHash } =  await escrow.methods
-  //     .reimburse_linode_spot(formattedInputs)
-  //     .send()
-  //     .wait();
-  //     return txHash
-  //   } else {
-  //     const {txHash} = await escrow.methods
-  //     .reimburse_linode_recurring(formattedInputs)
-  //     .send()
-  //     .wait();
-  //     return txHash;
-  //   }
-  // }
+    if(spot) {
+      const { txHash } =  await escrow.methods
+      .reimburse_linode_spot(formattedInputs)
+      .send()
+      .wait();
+      return txHash
+    } else {
+      const {txHash} = await escrow.methods
+      .reimburse_linode_recurring(formattedInputs)
+      .send()
+      .wait();
+      return txHash;
+    }
+  }
 
   const claimUnited = async (escrow: ZImburseEscrowContract): Promise<TxHash> => {
         const { deferred, inputs } = await makeUnitedInputs(email!.raw);
@@ -188,7 +188,7 @@ export default function ReimbursementsView(): JSX.Element {
 
       let txHash = TxHash.ZERO;
       if(verifier === 2) {
-        // txHash = await claimLinode(escrowContract, spot);
+        txHash = await claimLinode(escrowContract, spot);
       } else {
         txHash = await claimUnited(escrowContract);
       }

@@ -7,7 +7,7 @@ import { toast } from 'react-toastify';
 import { toUSDCDecimals } from "../utils";
 import logo from '../assets/logo.png'
 import usdc from '../assets/usdc.png';
-import { Lock, LockOpen, Plus } from "lucide-react";
+import { Copy, Lock, LockOpen, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AztecAddress, Fr } from "@aztec/circuits.js";
 import { AztecAccount } from "../utils/constants";
@@ -39,6 +39,16 @@ export default function Header(): JSX.Element {
   const availableWallets = useMemo(() => {
     return accounts.filter(acc => !acc.address.equals(account?.getAddress() ?? AztecAddress.ZERO))
   }, [account, accounts]);
+
+  const copyAddress = async (e: React.MouseEvent<SVGSVGElement, MouseEvent>, address: AztecAddress) => {
+    e.stopPropagation();
+    try {
+    await navigator.clipboard.writeText(address.toString())
+    toast.success('Address copied to clipboard!');
+    } catch (err) {
+      toast.error("Error occurred.");
+    }
+  }
 
   const mintUsdc = async () => {
     if (!account || !registryAdmin || !tokenContract) return;
@@ -123,15 +133,17 @@ export default function Header(): JSX.Element {
           {walletButtonText}
           {!!account && showMenu && (
             <div
-              className='absolute bg-zimburseGray left-0 rounded top-[calc(100%+12px)] w-full'
+              className='absolute bg-zimburseGray left-0 rounded top-[calc(100%+12px)]'
               ref={menuRef}
             >
               {availableWallets.map((wallet: AztecAccount) => (
                 <div
-                  className='cursor-pointer p-4 rounded hover:bg-[#A8A6A6]'
+                  className='cursor-pointer flex gap-2 items-center justify-between p-4 rounded hover:bg-[#A8A6A6]'
+                  key={wallet.address.toString()}
                   onClick={() => connectWallet(wallet.secretKey)}
                 >
-                  {truncateAddress(wallet.address.toString())}
+                  <div>{truncateAddress(wallet.address.toString())}</div>
+                  <Copy className="hover:stroke-[#F2F2F2]" color="black" onClick={e => copyAddress(e, wallet.address)} size={18}/>
                 </div>
               ))}
               <div

@@ -37,7 +37,6 @@ export default function ReimbursementAdminView(): JSX.Element {
   const addEscrowGroup = async (name: string) => {
     if (!account || !registryContract) return;
     setAddingGroup(1);
-    console.log('Accounts: ', account);
     try {
       const escrow = await ZImburseEscrowContract.deploy(
         account,

@@ -33,7 +33,7 @@ export default defineConfig({
     },
   },
   plugins: [
-    nodePolyfillsFix({ include: ["buffer", "process", "path", "stream"] }),
+    nodePolyfillsFix({ include: ["buffer", "crypto", "process", "path", "stream", "timers", "tty", "util"] }),
     react(),
     topLevelAwait(),
   ],

@@ -42,7 +42,7 @@ export default function DepositModal({
     try {
       setDepositing(true);
       await tokenContract.methods
-        .transfer_public(
+        .transfer_in_public(
           account.getAddress(),
           AztecAddress.fromString(escrowAddress),
           amount,

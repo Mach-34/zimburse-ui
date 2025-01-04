@@ -170,12 +170,10 @@ export default function ReimbursementManagementView(): JSX.Element {
       .methods.get_participants(escrowContract.address, 0)
       .simulate();
 
-    // const entitlements =
-
     const formattedParticipants = participants[0].storage
       .filter(
         (participant: any) =>
-          participant.address.toString() !== AztecAddress.ZERO.toString()
+          participant.address !== 0n
       )
       .map((participant: any) => {
         let name = participant.name[0].toString();
@@ -184,7 +182,7 @@ export default function ReimbursementManagementView(): JSX.Element {
         }
         name = Buffer.from(BigInt(name).toString(16), 'hex').toString('utf8');
         return {
-          address: participant.address.toString(),
+          address: AztecAddress.fromBigInt(participant.address).toString(),
           name,
         };
       });
