@@ -7,6 +7,8 @@ export type AztecAccount = {
 
 export const DEFAULT_PXE_URL = 'http://localhost:8080'
 
+export const EVENT_BLOCK_LIMIT = 10000;
+
 export const ENTITLEMENT_TITLES: { [key: number]: string } = {
     2: 'Linode Billing',
     5: 'United Flight'

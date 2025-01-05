@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import AddPolicyModal from './components/AddPolicyModal';
 import deposit from '../../assets/deposit.svg';
-import Policy from './components/Policy';
 import TransactionHistoryModal from './components/TransactionHistoryModal';
 import DepositModal from './components/DepositModal';
 import AddRecipientModal from './components/AddRecipientModal';
@@ -11,42 +10,30 @@ import { toast } from 'react-toastify';
 import { useAztec } from '../../contexts/AztecContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AztecAddress } from '@aztec/circuits.js';
-import { formatUSDC, truncateAddress } from '../../utils';
+import { formatUSDC, fromU128, truncateAddress } from '../../utils';
 import Loader from '../../components/Loader';
 import useEscrowContract from '../../hooks/useEscrowContract';
 import useRegistryContract from '../../hooks/useRegistryContract';
 import { ArrowLeft } from 'lucide-react';
 import PaymentChart from "../../components/PaymentChart";
+import { ZImburseEscrowContract } from "../../artifacts";
+import { ENTITLEMENT_TITLES, EVENT_BLOCK_LIMIT } from "../../utils/constants";
 
-const POLICIES = [
-  {
-    activeY: 'Active: Y ($X,XXX)',
-    paidOut: 'Paid Out: $ZZZ,ZZZ',
-    title: 'Linode Hosting',
-    type: 'Recurring',
-  },
-  {
-    activeY: 'Active: Y ($X,XXX)',
-    from: 'From: anywhere',
-    limit: 'Limit: $XX.XX',
-    paidOut: 'Paid Out: $ZZZ,ZZZ',
-    title: 'United Flight Receipt',
-    to: 'To: 123 Main St, Denver, CO 80223',
-    twoWay: 'Two-way: Yes',
-    type: 'Spot',
-  },
-];
+type Participant = {
+  address: string;
+  name: string;
+  policies: {
+    active: any[],
+    inactive: any[]
+  };
+  totalClaimed: bigint;
+};
 
 export type EscrowData = {
-  activeMonthly: bigint;
+  activeRecurring: bigint;
   activeSpot: bigint;
   escrowed: bigint;
   title: string;
-};
-
-type Recipient = {
-  address: string;
-  name: string;
 };
 
 const { VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT } =
@@ -61,8 +48,8 @@ export default function ReimbursementManagementView(): JSX.Element {
 
   const [addingRecipient, setAddingRecipient] = useState<boolean>(false);
   const [escrowData, setEscrowData] = useState<EscrowData | null>(null);
-  const [recipients, setRecipients] = useState<Array<Recipient>>([]);
-  const [selectedRecipient, setSelectedRecipient] = useState<any>(null);
+  const [recipients, setRecipients] = useState<Array<Participant>>([]);
+  const [selectedRecipient, setSelectedRecipient] = useState<Participant | null>(null);
   const [showDepositModal, setShowDepositModal] = useState<boolean>(false);
   const [showPolicyModal, setShowPolicyModal] = useState<boolean>(false);
   const [showAddRecipientModal, setShowAddRecipientModal] =
@@ -96,102 +83,180 @@ export default function ReimbursementManagementView(): JSX.Element {
     }
   };
 
-  const fetchEscrowData = async (): Promise<EscrowData | undefined> => {
-    if (!account || !escrowContract || !tokenContract || !viewOnlyAccount)
-      return;
-    const titleBytes = await escrowContract
+  const calculateActiveEntitlementsTotal = (entitlements: any[]) => {
+    return entitlements.reduce((acc: bigint, {max_value}: any) => {
+      return acc += fromU128(max_value)
+    }, 0n)
+  }
+
+  const fetchEntitlements = async (escrowContract: ZImburseEscrowContract) => {
+    // fetch spot entitlements
+    const spotPromise = await escrowContract.methods
+      .view_entitlements(
+        0,
+        account.getAddress(),
+        { _is_some: false, _value: AztecAddress.ZERO },
+        { _is_some: false, _value: 0 },
+        { _is_some: false, _value: true }
+      )
+      .simulate();
+
+    // fetch recurring entitlement
+    const recurringPromise = await escrowContract.methods
+      .view_entitlements(
+        0,
+        account.getAddress(),
+        { _is_some: false, _value: AztecAddress.ZERO },
+        { _is_some: false, _value: 0 },
+        { _is_some: true, _value: false }
+      )
+      .simulate();
+
+    const [spot, recurring] = await Promise.all([spotPromise, recurringPromise]);
+
+    return { spot, recurring };
+  }
+
+  const fetchEscrowData = async () => {
+    const titlePromise = escrowContract!
       .withWallet(viewOnlyAccount)
       .methods.get_title()
       .simulate();
 
-    const balance = await tokenContract
-      .withWallet(viewOnlyAccount)
+    const balancePromise = tokenContract!
+      .withWallet(viewOnlyAccount!)
       .methods.balance_of_public(escrowContract.address)
       .simulate();
+
+    const participantsPromise = registryContract!
+      .withWallet(registryAdmin)
+      .methods.get_participants(escrowContract!.address, 0)
+      .simulate();  
+
+    const [titleBytes, balance, entitlements, events, participants] = await Promise.all([titlePromise, balancePromise, fetchEntitlements(escrowContract!), fetchEventData(), participantsPromise]);
 
     const title = Buffer.from(new Uint8Array(titleBytes.map(Number))).toString(
       'utf8'
     );
 
-    // fetch spot entitlements
-    // const spotEntitlements = await escrowContract.methods
-    //   .view_entitlements(
-    //     0,
-    //     account.getAddress(),
-    //     { _is_some: false, _value: AztecAddress.ZERO },
-    //     { _is_some: false, _value: 0 },
-    //     { _is_some: true, _value: true }
-    //   )
-    //   .simulate();
+    const formattedParticipants = formatParticipants(participants[0].storage, entitlements, events);
 
-    // console.log('Spot entitlements: ', spotEntitlements);
-
-    // fetch recurring entitlement
-    // const recurringEntitlements = await escrowContract.methods
-    //   .view_entitlements(
-    //     0,
-    //     account.getAddress(),
-    //     { _is_some: false, _value: AztecAddress.ZERO },
-    //     { _is_some: false, _value: 0 },
-    //     { _is_some: true, _value: false }
-    //   )
-    //   .simulate();
     return {
-      activeMonthly: 0n,
-      activeSpot: 0n,
+      activeRecurring: calculateActiveEntitlementsTotal(entitlements.recurring[0].storage),
+      activeSpot: calculateActiveEntitlementsTotal(entitlements.spot[0].storage),
       escrowed: balance,
+      participants: formattedParticipants,
       title,
     };
   };
 
-  const fetchEscrowInfo = async () => {
-    if (
-      !account ||
-      !escrowContract ||
-      !registryAdmin ||
-      !registryContract ||
-      !tokenContract ||
-      !viewOnlyAccount
-    )
-      return;
+  const fetchEventData = async () => {
+    const { RecurringReimbursementClaimed, SpotReimbursementClaimed } = ZImburseEscrowContract.events;
+    // @ts-ignore
+    const recurringPromise = account!.getEncryptedEvents(RecurringReimbursementClaimed, 1, EVENT_BLOCK_LIMIT);
+    // @ts-ignore
+    const spotPromise = account!.getEncryptedEvents(SpotReimbursementClaimed, 1, EVENT_BLOCK_LIMIT);
 
-    const escrowData = await fetchEscrowData();
-    setEscrowData(escrowData!);
+    const [recurringClaims, spotClaims] = await Promise.all([recurringPromise, spotPromise]);
+    return {recurringClaims, spotClaims};
+  }
 
-    const participants = await fetchParticipants();
 
-    setRecipients(participants);
-  };
 
-  const fetchParticipants = async () => {
-    if (!escrowContract || !registryAdmin || !registryContract) return;
-    const participants = await registryContract
-      .withWallet(registryAdmin)
-      .methods.get_participants(escrowContract.address, 0)
-      .simulate();
-
-    const formattedParticipants = participants[0].storage
-      .filter(
-        (participant: any) =>
-          participant.address !== 0n
-      )
-      .map((participant: any) => {
+  const formatParticipants = (participants: any[], entitlements: any, events: any): Array<Participant> => {
+    // init participant object
+    const participantObj: any = {};
+    participants.forEach((participant: any) => {
+      if(participant.address !== 0n) {
         let name = participant.name[0].toString();
         if (participant.name[1] !== 0n) {
           name.concat(participant.name[1]);
         }
         name = Buffer.from(BigInt(name).toString(16), 'hex').toString('utf8');
-        return {
-          address: AztecAddress.fromBigInt(participant.address).toString(),
+        const address = AztecAddress.fromBigInt(participant.address).toString();
+        participantObj[address] = {
+          address,
           name,
+          policies: {
+            active: [],
+            inactive: []
+          },
+          totalClaimed: 0n
+        }
+    }
+    });
+
+    // parse entitlements by participant
+    const flattenedEntitlements = [...entitlements.recurring[0].storage, ...entitlements.spot[0].storage];
+    flattenedEntitlements.forEach((entitlement: any) => {
+      if(entitlement.recipient !== 0n) {
+        const recipient = AztecAddress.fromBigInt(entitlement.recipient).toString();
+
+        // format entitlement
+        const entitlementData = {
+          maxAmount: fromU128(entitlement.max_value),
+          paidOut: 0n, // TODO: Need to figure out if there is a way to link to specific entitlement note
+          spot: entitlement.spot,
+          title: ENTITLEMENT_TITLES[entitlement.verifier_id as number],
+          verifier_id: entitlement.verifier_id
         };
-      });
-    return formattedParticipants;
+
+        // TODO: Check for nullification and organize by historical / active
+        participantObj[recipient].policies.active.push(entitlementData);
+      }
+    });
+
+    // calculate total amount claimed by participant
+    const flattenedEvents = [...events.recurringClaims, ...events.spotClaims];
+    flattenedEvents.forEach((event: any) => {
+      const claimant = AztecAddress.fromBigInt(event.claimant).toString();
+      participantObj[claimant].totalClaimed += event.amount;
+    });
+
+    return Object.values(participantObj);
   };
+
+  const nullifyEntitlement = async (nullifyIndex: number) => {
+    if(!escrowContract || !selectedRecipient) return;
+    try {
+      const { maxAmount } = selectedRecipient.policies.active[nullifyIndex];
+      // remove entitlement from participant list
+      const recipientIndex = recipients.findIndex(recipient => recipient.address === selectedRecipient.address);
+      const copy = [...recipients];
+      const [nullified] = copy[recipientIndex].policies.active.splice(nullifyIndex, 1);
+
+      // nullify on contract side
+      await escrowContract.methods
+      .revoke_entitlement(AztecAddress.fromString(selectedRecipient.address), nullified.verifier_id, nullified.spot)
+      .send()
+      .wait();
+
+      setRecipients(copy);
+      // update active entitlement total for escrow
+      if(nullified.spot) {
+        setEscrowData(prev => ({
+          ...prev!, 
+          activeSpot: prev!.activeSpot - maxAmount
+        }))
+      } else {
+        setEscrowData(prev => ({
+          ...prev!, 
+          activeRecurring: prev!.activeRecurring - maxAmount
+        }))
+      }
+      toast.success("Successfully nullified entitlement");
+  } catch (err) {
+      toast.error("Error occurred nullifiying entitlement");
+  }
+  }
 
   useEffect(() => {
     (async () => {
-      await fetchEscrowInfo();
+      if(account && escrowContract && registryContract && tokenContract && viewOnlyAccount) {
+        const { participants, ...rest } = await fetchEscrowData();
+        setEscrowData(rest);
+        setRecipients(participants);
+      }
     })();
   }, [
     account,
@@ -237,7 +302,7 @@ export default function ReimbursementManagementView(): JSX.Element {
                 </div>
                 <div className='text-lg'>
                   Active Monthly Entitlements: $
-                  {formatUSDC(escrowData.activeMonthly)}
+                  {formatUSDC(escrowData.activeRecurring)}
                 </div>
                 <div className='text-lg'>
                   Active Spot Entitlements: $
@@ -300,8 +365,8 @@ export default function ReimbursementManagementView(): JSX.Element {
                         </div>
                         <div className='flex flex-col gap-2 justify-between'>
                           <div className='h-6' />
-                          <div>Total Claimed: $XX</div>
-                          <div>Active Policies: X</div>
+                          <div>Total Claimed: ${formatUSDC(recipient.totalClaimed)}</div>
+                          <div>Active Policies: {recipient.policies.active.length}</div>
                         </div>
                       </div>
                     ))
@@ -326,7 +391,7 @@ export default function ReimbursementManagementView(): JSX.Element {
           open={showAddRecipientModal}
         />
         <DepositModal
-          activeMonthly={escrowData?.activeMonthly ?? 0n}
+          activeRecurring={escrowData?.activeRecurring ?? 0n}
           activeSpot={escrowData?.activeSpot ?? 0n}
           escrowAddress={escrowAddress ?? ''}
           escrowBalance={escrowData?.escrowed ?? 0n}
@@ -335,8 +400,9 @@ export default function ReimbursementManagementView(): JSX.Element {
           setEscrowData={setEscrowData}
         />
         <RecipientDataModal
-          escrowContract={escrowContract}
+          onAddEntitlement={() => null}
           onClose={() => setSelectedRecipient(null)}
+          onNullify={(nullifyIndex: number) => nullifyEntitlement(nullifyIndex)}
           open={!!selectedRecipient}
           recipient={selectedRecipient ?? {}}
         />
