@@ -4,10 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Loader from '../../../components/Loader';
 import Select from '../../../components/Select';
 import { NUMBER_INPUT_REGEX } from "../../../utils/constants";
-import { VERIFIERS } from "./RecipientDataModal";
 import Calendar from "react-calendar";
 import useOutsideAlerter from "../../../hooks/useOutsideAlerter";
 import moment from 'moment';
+import { VERIFIERS } from "..";
 
 type AddEntitlementModalProps = {
   loading: boolean;
@@ -136,7 +136,7 @@ export default function AddEntitlementModal({
         <button
           className='bg-zimburseBlue flex items-center gap-2'
           disabled={disabled}
-          onClick={() => onFinish(amount, verifier ?? '', spot, dateRange as Date[], destination)}
+          onClick={() => onFinish(amount, verifier ?? '', spot || !isLinode, dateRange as Date[], destination)}
         >
           <div>{loading ? 'Adding entitlement...' : 'Add entitlement'}</div>
           {loading && <Loader />}

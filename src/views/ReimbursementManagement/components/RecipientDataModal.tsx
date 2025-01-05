@@ -3,10 +3,7 @@ import Modal, { ModalProps } from '../../../components/Modal';
 import { useState } from 'react';
 import ConfirmationModal from './ConfirmationModal';
 import { formatUSDC, truncateAddress } from '../../../utils';
-import { useAztec } from '../../../contexts/AztecContext';
-import { AztecAddress } from '@aztec/circuits.js';
 import { toast } from 'react-toastify';
-import { toUSDCDecimals } from "../../../utils";
 
 import AddEntitlementModal from './AddEntitlementModal';
 
@@ -17,22 +14,20 @@ type RecipientDataModalProps = {
     spot: boolean,
     dateRange?: Date[],
     destination?: string
-  ) => void;
+  ) => Promise<void>;
   onNullify: (nullifyIndex: number) => Promise<void>;
   recipient: any;
 } & Omit<ModalProps, 'children'>;
 
 const TABS = ['Historical', 'Active'];
 
-export const VERIFIERS: {[key: string]: number} = {'Linode': 2, 'United': 5 };
-
 export default function RecipientDataModal({
   recipient,
+  onAddEntitlement,
   onClose,
   onNullify,
   open,
 }: RecipientDataModalProps): JSX.Element {
-  const { account } = useAztec();
   const [addingEntitlement, setAddingEntilement] = useState<boolean>(false);
   const [nullifyIndex, setNullifyIndex] = useState<number>(-1);
   const [selectedTab] = useState<number>(1);
@@ -41,42 +36,14 @@ export default function RecipientDataModal({
 
   const addEntitlement = async (
     amount: string,
-    verifier: string,
+    verifierId: string,
     spot: boolean,
     dateRange?: Date[],
     destination?: string
   ) => {
-    if (!account || !escrowContract) return;
     setAddingEntilement(true);
-
     try {
-      if(spot || verifier === 'United') {
-        // give participant entitlement
-        await escrowContract.methods
-        .give_spot_entitlement(
-          AztecAddress.fromString(recipient.address),
-          toUSDCDecimals(amount),
-          VERIFIERS[verifier],
-          BigInt(dateRange![0].getTime()) / 1000n,
-          BigInt(dateRange![1].getTime()) / 1000n,
-          `${destination ?? 'NON'}\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0`
-        )
-        .send()
-        .wait();
-      } else {
-        // give participant entitlement
-        await escrowContract.methods
-        .give_recurring_entitlement(
-          AztecAddress.fromString(recipient.address),
-          toUSDCDecimals(amount),
-          VERIFIERS[verifier]
-        )
-        .send().wait();
-      }
-      // setEntitlements((prev) => [
-      //   ...prev,
-      //   { maxAmount: toUSDCDecimals(amount), paidOut: undefined, spot, title: ENTITLEMENT_TITLES[VERIFIERS[verifier]] },
-      // ]);
+      await onAddEntitlement(amount, verifierId, spot, dateRange, destination);
       toast.success(`${spot ? 'Spot' : 'Recurring'} entitlement added for recipient: ${recipient.address}`);
     } catch (err) {
       toast.error('Error occurred adding entitlement');

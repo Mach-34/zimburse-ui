@@ -10,7 +10,7 @@ import { toast } from 'react-toastify';
 import { useAztec } from '../../contexts/AztecContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AztecAddress } from '@aztec/circuits.js';
-import { formatUSDC, fromU128, truncateAddress } from '../../utils';
+import { formatUSDC, fromU128, toUSDCDecimals, truncateAddress } from '../../utils';
 import Loader from '../../components/Loader';
 import useEscrowContract from '../../hooks/useEscrowContract';
 import useRegistryContract from '../../hooks/useRegistryContract';
@@ -36,6 +36,8 @@ export type EscrowData = {
   title: string;
 };
 
+export const VERIFIERS: {[key: string]: number} = {'Linode': 2, 'United': 5 };
+
 const { VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT } =
   import.meta.env;
 
@@ -49,7 +51,7 @@ export default function ReimbursementManagementView(): JSX.Element {
   const [addingRecipient, setAddingRecipient] = useState<boolean>(false);
   const [escrowData, setEscrowData] = useState<EscrowData | null>(null);
   const [recipients, setRecipients] = useState<Array<Participant>>([]);
-  const [selectedRecipient, setSelectedRecipient] = useState<Participant | null>(null);
+  const [selectedRecipient, setSelectedRecipient] = useState<number>(-1);
   const [showDepositModal, setShowDepositModal] = useState<boolean>(false);
   const [showPolicyModal, setShowPolicyModal] = useState<boolean>(false);
   const [showAddRecipientModal, setShowAddRecipientModal] =
@@ -72,7 +74,10 @@ export default function ReimbursementManagementView(): JSX.Element {
         .send()
         .wait();
 
-      setRecipients((prev) => [...prev, { address, name: name }]);
+      setRecipients((prev) => [
+        ...prev, 
+        { address, name: name, policies: { active: [], inactive:[] }, totalClaimed: 0n }
+      ]);
       toast.success('Added recipient to escrow!');
     } catch (err) {
       toast.error('Error occurred adding recipient.');
@@ -195,10 +200,10 @@ export default function ReimbursementManagementView(): JSX.Element {
         // format entitlement
         const entitlementData = {
           maxAmount: fromU128(entitlement.max_value),
-          paidOut: 0n, // TODO: Need to figure out if there is a way to link to specific entitlement note
+          paidOut: entitlement.spot ? undefined : 0n, // TODO: Need to figure out if there is a way to link to specific entitlement note
           spot: entitlement.spot,
           title: ENTITLEMENT_TITLES[entitlement.verifier_id as number],
-          verifier_id: entitlement.verifier_id
+          verifierId: entitlement.verifier_id
         };
 
         // TODO: Check for nullification and organize by historical / active
@@ -216,18 +221,77 @@ export default function ReimbursementManagementView(): JSX.Element {
     return Object.values(participantObj);
   };
 
+  const addEntitlement = async (
+    amount: string,
+    verifier: string,
+    spot: boolean,
+    dateRange?: Date[],
+    destination?: string
+  ) => {
+    if(!escrowContract || selectedRecipient < 0) return;
+    const recipient = recipients[selectedRecipient];
+    const amtDecimals = toUSDCDecimals(amount);
+    if(spot || verifier === 'United') {
+      // give participant entitlement
+      await escrowContract.methods
+      .give_spot_entitlement(
+        AztecAddress.fromString(recipient.address),
+        amtDecimals,
+        VERIFIERS[verifier],
+        BigInt(dateRange![0].getTime()) / 1000n,
+        BigInt(dateRange![1].getTime()) / 1000n,
+        `${destination ?? 'NON'}\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0`
+      )
+      .send()
+      .wait();
+    } else {
+      // give participant entitlement
+      await escrowContract.methods
+      .give_recurring_entitlement(
+        AztecAddress.fromString(recipient.address),
+        amtDecimals,
+        VERIFIERS[verifier]
+      )
+      .send().wait();
+    }
+
+    // update active entitlements for recipient
+    const copy = [...recipients];
+    copy[selectedRecipient].policies.active.push(
+      { 
+        maxAmount: toUSDCDecimals(amount), 
+        paidOut: spot ? undefined : 0n, 
+        spot, 
+        title: ENTITLEMENT_TITLES[VERIFIERS[verifier]], 
+        verifierId: verifier 
+      }
+    );
+    setRecipients(copy);
+
+    // update active entitlement total for escrow
+    if(spot) {
+      setEscrowData(prev => ({
+        ...prev!, 
+        activeSpot: prev!.activeSpot + amtDecimals
+      }))
+    } else {
+      setEscrowData(prev => ({
+        ...prev!, 
+        activeRecurring: prev!.activeRecurring + amtDecimals
+      }))
+      }
+  }
+
   const nullifyEntitlement = async (nullifyIndex: number) => {
-    if(!escrowContract || !selectedRecipient) return;
+    if(!escrowContract || selectedRecipient < 0) return;
     try {
-      const { maxAmount } = selectedRecipient.policies.active[nullifyIndex];
       // remove entitlement from participant list
-      const recipientIndex = recipients.findIndex(recipient => recipient.address === selectedRecipient.address);
       const copy = [...recipients];
-      const [nullified] = copy[recipientIndex].policies.active.splice(nullifyIndex, 1);
+      const [nullified] = copy[selectedRecipient].policies.active.splice(nullifyIndex, 1);
 
       // nullify on contract side
       await escrowContract.methods
-      .revoke_entitlement(AztecAddress.fromString(selectedRecipient.address), nullified.verifier_id, nullified.spot)
+      .revoke_entitlement(AztecAddress.fromString(copy[selectedRecipient].address), nullified.verifierId, nullified.spot)
       .send()
       .wait();
 
@@ -236,12 +300,12 @@ export default function ReimbursementManagementView(): JSX.Element {
       if(nullified.spot) {
         setEscrowData(prev => ({
           ...prev!, 
-          activeSpot: prev!.activeSpot - maxAmount
+          activeSpot: prev!.activeSpot - nullified.maxAmount
         }))
       } else {
         setEscrowData(prev => ({
           ...prev!, 
-          activeRecurring: prev!.activeRecurring - maxAmount
+          activeRecurring: prev!.activeRecurring - nullified.maxAmount
         }))
       }
       toast.success("Successfully nullified entitlement");
@@ -353,11 +417,11 @@ export default function ReimbursementManagementView(): JSX.Element {
                 </button>
                 <div className='flex-1 mt-4 overflow-y-auto w-full'>
                   {!!recipients.length ? (
-                    recipients.map((recipient) => (
+                    recipients.map((recipient, index) => (
                       <div
                         className='bg-white cursor-pointer flex justify-between mt-2 px-2 py-1'
                         key={recipient.address}
-                        onClick={() => setSelectedRecipient(recipient)}
+                        onClick={() => setSelectedRecipient(index)}
                       >
                         <div>
                           <div className='text-xl'>{recipient.name}</div>
@@ -400,11 +464,11 @@ export default function ReimbursementManagementView(): JSX.Element {
           setEscrowData={setEscrowData}
         />
         <RecipientDataModal
-          onAddEntitlement={() => null}
-          onClose={() => setSelectedRecipient(null)}
-          onNullify={(nullifyIndex: number) => nullifyEntitlement(nullifyIndex)}
-          open={!!selectedRecipient}
-          recipient={selectedRecipient ?? {}}
+          onAddEntitlement={addEntitlement}
+          onClose={() => setSelectedRecipient(-1)}
+          onNullify={nullifyEntitlement}
+          open={selectedRecipient >= 0}
+          recipient={selectedRecipient >= 0 ? recipients[selectedRecipient] : {}}
         />
         <TransactionHistoryModal
           onClose={() => setShowTxModal(false)}
