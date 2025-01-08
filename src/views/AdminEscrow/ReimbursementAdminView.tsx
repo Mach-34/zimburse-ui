@@ -64,7 +64,8 @@ export default function ReimbursementAdminView(): JSX.Element {
           activeSpot: 0n,
           escrowed: 0n, 
           id: escrow.address.toString(), 
-          title: name 
+          title: name, 
+          totalReimbursed: 0n
         },
       ]);
       toast.success('Created escrow group!');
@@ -173,8 +174,8 @@ export default function ReimbursementAdminView(): JSX.Element {
     if (!account || !registryContract || !viewOnlyAccount) return;
     try {
       const escrows: Array<Promise<EscrowGroup | undefined>> = [];
-      const escrowGroups = await registryContract.methods
-        .get_managed_escrows(0)
+      const escrowGroups = await registryContract.withWallet(account).methods
+        .get_managed_escrows(account.getAddress(), 0)
         .simulate();
 
       const numEscrows = Number(escrowGroups[0].len);
