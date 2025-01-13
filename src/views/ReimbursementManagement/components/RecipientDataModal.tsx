@@ -30,6 +30,7 @@ export default function RecipientDataModal({
 }: RecipientDataModalProps): JSX.Element {
   const [addingEntitlement, setAddingEntilement] = useState<boolean>(false);
   const [nullifyIndex, setNullifyIndex] = useState<number>(-1);
+  const [nullifying, setNullifying] = useState<boolean>(false);
   const [selectedTab] = useState<number>(1);
   const [showEntitlementModal, setShowEntitlementModal] =
     useState<boolean>(false);
@@ -55,8 +56,10 @@ export default function RecipientDataModal({
   };
 
   const nullifyEntitlement = async () => {
+    setNullifying(true);
     await onNullify(nullifyIndex);
     setNullifyIndex(-1);
+    setNullifying(false);
   };
 
   return (
@@ -117,7 +120,7 @@ export default function RecipientDataModal({
                         <X size={16} />
                       </div>
                       <div>Max amount: ${formatUSDC(entitlement.maxAmount ?? 0n)}</div>
-                      {entitlement.paidOut !== undefined && <div>Paid out: ${formatUSDC(entitlement.paidOut ?? 0n)}</div>}
+                      {/* {entitlement.paidOut !== undefined && <div>Paid out: ${formatUSDC(entitlement.paidOut ?? 0n)}</div>} */}
                     </div>
                   </div>
                 ))
@@ -135,9 +138,10 @@ export default function RecipientDataModal({
         open={showEntitlementModal}
       />
       <ConfirmationModal
+        loading={nullifying ? 'Nullifying...' : undefined}
         message={
           nullifyIndex >= 0
-            ? `Are you sure you want to nullify ${recipient.policies.active[nullifyIndex].title ?? ''}?`
+            ? `Are you sure you want to nullify ${recipient.policies.active[nullifyIndex]?.title ?? ''}?`
             : ''
         }
         onClose={() => setNullifyIndex(-1)}

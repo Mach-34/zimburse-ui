@@ -199,6 +199,13 @@ export default function ReimbursementsView(): JSX.Element {
         private: prev.private + amount,
       }));
 
+      // if entitlement is spot then remove it upon claiming
+      setEntitlements(prev => {
+        const copy = [...prev];
+        copy.splice(selectedEntitlement, 1)
+        return copy;
+      });
+
       toast.success(`Successfully redeemed ${emailTypes[verifier]} entitlement!`);
     } catch (err) {
       console.log('Error: ', err);

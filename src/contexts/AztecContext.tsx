@@ -12,17 +12,20 @@ import {
   AccountManager,
   AccountWalletWithSecretKey,
   AztecAddress,
+  BatchCall,
   createPXEClient,
   Fq,
   Fr,
+  UniqueNote,
   waitForPXE,
 } from '@aztec/aztec.js';
-import { AztecAccount, DEFAULT_PXE_URL, ZIMBURSE_LS_KEY } from '../utils/constants';
+import { AztecAccount, DEFAULT_PXE_URL, EVENT_BLOCK_LIMIT, ZIMBURSE_LS_KEY } from '../utils/constants';
 import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
 import { getSchnorrAccount } from '@aztec/accounts/schnorr';
-import { TokenContract } from '../artifacts';
+import { TokenContract, ZImburseEscrowContract } from '../artifacts';
 import { deriveSigningKey } from "@aztec/circuits.js";
 import { toast } from "react-toastify";
+import chunk from 'lodash.chunk';
 
 type AztecContextProps = {
   account: AccountWalletWithSecretKey | undefined;
@@ -108,6 +111,63 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [AZTEC_WALLETS]);
 
+  const checkForCounterpartyNullifications = async () => {
+    // @ts-ignore
+    const nullifyEvents = await account!.getEncryptedEvents(ZImburseEscrowContract.events.EntitlementNullified, 1, EVENT_BLOCK_LIMIT);
+    const entropyVals = nullifyEvents.map(({ randomness }: any) => randomness);
+    const notes = await account!.getIncomingNotes({scopes: [account!.getAddress()]});
+    
+    // map notes to nullify to specific escrow contracts
+    const escrowNoteObj = notes.reduce((obj: any, note: UniqueNote) => {
+      // check that note is correct type
+      const entitlementNoteId = ZImburseEscrowContract.notes.EntitlementNote.id.value;
+      if(note.noteTypeId.value === entitlementNoteId) {
+        // check that note entropy matches entropy emitted in nullify event
+        const entropy = note.note.items[7].toBigInt();
+        if(entropyVals.includes(entropy)) {
+          const escrow = note.contractAddress.toString();
+          // if escrow is not key in object then initialize
+          if(escrow in obj) {
+            obj[escrow].push(entropy);
+          } else {
+            obj[escrow] = [entropy];
+          }
+        }
+      }
+      return obj;
+    }, {});
+
+    // nullify notes if there are notes to nullify
+    if(Object.keys(escrowNoteObj).length > 0) {
+      await nullifyNotes(escrowNoteObj);
+    }
+  }
+
+  const nullifyNotes = async (escrowNoteObj: any) => {
+    const NULLIFY_CHUNK_SIZE = 10;
+    // load escrow contract instances
+    const escrowContracts = await Promise.all(Object.keys(escrowNoteObj).map(async (address: string) => {
+      return await ZImburseEscrowContract.at(AztecAddress.fromString(address), account);
+    }));
+
+    // create transaction requests
+    const txRequests = escrowContracts.map(contract => {
+      const requests = [];
+      const entropyVals = escrowNoteObj[contract.address.toString()];
+      // nullify entitlements can only nullify 10 notes at a time currently
+      for(let i = 0; i < entropyVals.length; i += NULLIFY_CHUNK_SIZE) {
+        const slice = entropyVals.slice(i, i + NULLIFY_CHUNK_SIZE);
+        // make sure array size is 10
+        slice.push(...new Array(10 - slice.length).fill(0));
+        requests.push(contract.methods.nullify_entitlements(slice).request())
+      }
+      return requests;
+    });
+
+    // flatten requests and batch call
+    await Promise.all(chunk(txRequests.flat(), 4).map(batch => new BatchCall(account!, batch).send()))
+  }
+
   const checkAndRegisterAccount = async (secretKey: Fr): Promise<AccountWalletWithSecretKey> => {
       // load schnorr account
       const schnorr = getSchnorrAccount(
@@ -172,6 +232,9 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
       });
       setTokenContract(contract);
       setFetchingTokenBalance(false);
+
+      // check for events to nullify
+      await checkForCounterpartyNullifications();
     })();
   }, [account, viewOnlyAccount]);
 

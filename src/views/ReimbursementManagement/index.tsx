@@ -9,7 +9,7 @@ import AppLayout from '../../layouts/AppLayout';
 import { toast } from 'react-toastify';
 import { useAztec } from '../../contexts/AztecContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AztecAddress } from '@aztec/circuits.js';
+import { AztecAddress, MAX_BLOCK_NUMBER_LENGTH } from '@aztec/circuits.js';
 import { formatUSDC, fromU128, toUSDCDecimals, truncateAddress } from '../../utils';
 import Loader from '../../components/Loader';
 import useEscrowContract from '../../hooks/useEscrowContract';
@@ -102,7 +102,7 @@ export default function ReimbursementManagementView(): JSX.Element {
         account.getAddress(),
         { _is_some: false, _value: AztecAddress.ZERO },
         { _is_some: false, _value: 0 },
-        { _is_some: false, _value: true }
+        { _is_some: true, _value: true }
       )
       .simulate();
 
@@ -283,17 +283,19 @@ export default function ReimbursementManagementView(): JSX.Element {
   }
 
   const nullifyEntitlement = async (nullifyIndex: number) => {
-    if(!escrowContract || selectedRecipient < 0) return;
+    if(!account || !escrowContract || selectedRecipient < 0) return;
     try {
       // remove entitlement from participant list
       const copy = [...recipients];
-      const [nullified] = copy[selectedRecipient].policies.active.splice(nullifyIndex, 1);
+      const nullified = copy[selectedRecipient].policies.active[nullifyIndex];
 
       // nullify on contract side
       await escrowContract.methods
       .revoke_entitlement(AztecAddress.fromString(copy[selectedRecipient].address), nullified.verifierId, nullified.spot)
       .send()
       .wait();
+
+      copy[selectedRecipient].policies.active.splice(nullifyIndex, 1);
 
       setRecipients(copy);
       // update active entitlement total for escrow
@@ -310,6 +312,7 @@ export default function ReimbursementManagementView(): JSX.Element {
       }
       toast.success("Successfully nullified entitlement");
   } catch (err) {
+      console.log('Error: ', err);
       toast.error("Error occurred nullifiying entitlement");
   }
   }

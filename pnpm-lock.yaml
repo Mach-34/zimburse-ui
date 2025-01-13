@@ -29,6 +29,9 @@ dependencies:
   buffer:
     specifier: ^6.0.3
     version: 6.0.3
+  lodash.chunk:
+    specifier: ^4.2.0
+    version: 4.2.0
   lucide-react:
     specifier: ^0.446.0
     version: 0.446.0(react@18.3.1)
@@ -64,6 +67,9 @@ devDependencies:
   '@eslint/js':
     specifier: ^9.9.0
     version: 9.9.0
+  '@types/lodash.chunk':
+    specifier: ^4.2.9
+    version: 4.2.9
   '@types/react':
     specifier: ^18.3.3
     version: 18.3.3
@@ -1372,6 +1378,16 @@ packages:
 
   /@types/estree@1.0.6:
     resolution: {integrity: sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==}
+
+  /@types/lodash.chunk@4.2.9:
+    resolution: {integrity: sha512-Z9VtFUSnmT0No/QymqfG9AGbfOA4O5qB/uyP89xeZBqDAsKsB4gQFTqt7d0pHjbsTwtQ4yZObQVHuKlSOhIJ5Q==}
+    dependencies:
+      '@types/lodash': 4.17.14
+    dev: true
+
+  /@types/lodash@4.17.14:
+    resolution: {integrity: sha512-jsxagdikDiDBeIRaPYtArcT8my4tN1og7MtMRquFT3XNA6axxyHDRUemqDz/taRDdOUn0GnGHRCuff4q48sW9A==}
+    dev: true
 
   /@types/prop-types@15.7.14:
     resolution: {integrity: sha512-gNMvNH49DJ7OJYv+KAKn0Xp45p8PLl6zo2YnvDIbTd4J6MER2BmWN49TG7n9LvkyihINxeKW8+3bfS2yDC9dzQ==}

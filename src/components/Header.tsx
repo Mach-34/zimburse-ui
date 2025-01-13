@@ -89,7 +89,7 @@ export default function Header(): JSX.Element {
     <div className='flex items-center justify-between py-5 px-10'>
       <img alt="Logo" className="cursor-pointer h-10 w-10" onClick={() => navigate('/')} src={logo} />
       <div className="flex gap-4 items-center">
-      {account &&
+      {account && !connecting &&
         (fetchingTokenBalance ? (
           <div className='flex gap-2 items-center mr-8'>
             <div className='text-sm'>Fetching token balances...</div>
