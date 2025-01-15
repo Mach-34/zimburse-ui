@@ -17,19 +17,15 @@ import {
   makeUnitedInputs,
   toContractFriendly
 } from '@mach-34/zimburse/dist/src/email_inputs/united';
-import { addPendingShieldNoteToPXE } from '@mach-34/zimburse/dist/src/contract_drivers/notes';
 import { toast } from 'react-toastify';
-import { computeSecretHash, Fr, TxHash } from '@aztec/aztec.js';
-import {
-  fromUSDCDecimals,
-} from '@mach-34/zimburse/dist/src/utils';
-import { formatUSDC, fromU128, toUSDCDecimals } from "../utils";
+import { Fr, TxHash } from '@aztec/aztec.js';
+import { formatUSDC, fromU128} from "../utils";
 import moment from "moment";
 import { EmailDisplayData, extractLinodeData, extractUnitedData } from "../utils/emails";
 
 const emailTypes: { [key: number]: string } = {
   2: 'Linode',
-  3: 'United'
+  5: 'United'
 };
 
 const MAX_CHUNK_SIZE = 2048;
@@ -97,11 +93,11 @@ export default function ReimbursementsView(): JSX.Element {
     const participantEscrows = await registryContract.methods
       .get_participant_escrows(account.getAddress(), 0)
       .simulate();
-
+    
     const { len, storage } = participantEscrows[0];
     for (let i = 0; i < len; i++) {
       const escrowContract = await ZImburseEscrowContract.at(
-        storage[i],
+        AztecAddress.fromBigInt(storage[i]),
         account
       );
       const entitlementsRes = await escrowContract.methods
@@ -138,26 +134,26 @@ export default function ReimbursementsView(): JSX.Element {
     setFetchingEscrows(false);
   };
 
-  const claimLinode = async (escrow: ZImburseEscrowContract, secretHash: Fr, spot: boolean): Promise<TxHash> => {
+  const claimLinode = async (escrow: ZImburseEscrowContract, spot: boolean): Promise<TxHash> => {
     const inputs = await makeLinodeInputs(email!.raw);
     const formattedInputs = formatRedeemLinode(inputs);
 
     if(spot) {
       const { txHash } =  await escrow.methods
-      .reimburse_linode_spot(formattedInputs, secretHash)
+      .reimburse_linode_spot(formattedInputs)
       .send()
       .wait();
       return txHash
     } else {
       const {txHash} = await escrow.methods
-      .reimburse_linode_recurring(formattedInputs, secretHash)
+      .reimburse_linode_recurring(formattedInputs)
       .send()
       .wait();
       return txHash;
     }
   }
 
-  const claimUnited = async (escrow: ZImburseEscrowContract, secretHash: Fr): Promise<TxHash> => {
+  const claimUnited = async (escrow: ZImburseEscrowContract): Promise<TxHash> => {
         const { deferred, inputs } = await makeUnitedInputs(email!.raw);
       const formattedInputs = toContractFriendly(inputs);
 
@@ -176,7 +172,6 @@ export default function ReimbursementsView(): JSX.Element {
         amountToDateLength,
         remainingLength,
         deferred.actualLength,
-        secretHash
       ).send().wait();
       return txHash;
   }
@@ -191,35 +186,25 @@ export default function ReimbursementsView(): JSX.Element {
         account
       );
 
-      const secret = Fr.random();
-      const secretHash = computeSecretHash(secret);
-
       let txHash = TxHash.ZERO;
       if(verifier === 2) {
-        txHash = await claimLinode(escrowContract, secretHash, spot);
+        txHash = await claimLinode(escrowContract, spot);
       } else {
-        txHash = await claimUnited(escrowContract, secretHash);
+        txHash = await claimUnited(escrowContract);
       }
 
       const amount = email.data.amount;
-
-      await addPendingShieldNoteToPXE(
-        account,
-        AztecAddress.fromString(USDC_CONTRACT),
-        amount,
-        secretHash,
-        txHash
-      );
-
-      await tokenContract.methods
-        .redeem_shield(account.getAddress(), amount, secret)
-        .send()
-        .wait();
-
       setTokenBalance((prev) => ({
         ...prev,
         private: prev.private + amount,
       }));
+
+      // if entitlement is spot then remove it upon claiming
+      setEntitlements(prev => {
+        const copy = [...prev];
+        copy.splice(selectedEntitlement, 1)
+        return copy;
+      });
 
       toast.success(`Successfully redeemed ${emailTypes[verifier]} entitlement!`);
     } catch (err) {
@@ -234,7 +219,7 @@ export default function ReimbursementsView(): JSX.Element {
     const arrayBuff = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuff);
     // extract email info
-    if(entitlements[selectedEntitlement].verifier === 3) {
+    if(entitlements[selectedEntitlement].verifier === 5) {
       const extractedData = await extractUnitedData(buffer);
       setEmail({data: extractedData, raw: buffer})
     } else {

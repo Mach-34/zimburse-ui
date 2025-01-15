@@ -10,7 +10,7 @@ import { formatUSDC, toUSDCDecimals } from "../../../utils";
 import { NUMBER_INPUT_REGEX } from "../../../utils/constants";
 
 type DepositModalProps = {
-  activeMonthly: bigint;
+  activeRecurring: bigint;
   activeSpot: bigint;
   escrowAddress: string;
   escrowBalance: bigint;
@@ -18,7 +18,7 @@ type DepositModalProps = {
 } & Omit<ModalProps, 'children'>;
 
 export default function DepositModal({
-  activeMonthly,
+  activeRecurring,
   activeSpot,
   escrowAddress,
   escrowBalance,
@@ -42,7 +42,7 @@ export default function DepositModal({
     try {
       setDepositing(true);
       await tokenContract.methods
-        .transfer_public(
+        .transfer_in_public(
           account.getAddress(),
           AztecAddress.fromString(escrowAddress),
           amount,
@@ -92,7 +92,7 @@ export default function DepositModal({
               Escrow Balance: ${formatUSDC(escrowBalance)}
             </div>
             <div className='mt-2 text-xl'>
-              Active Monthly Entitlements: ${formatUSDC(activeMonthly)}
+              Active Monthly Entitlements: ${formatUSDC(activeRecurring)}
             </div>
             <div className='text-xl'>
               Active Spot Entitlements: ${formatUSDC(activeSpot)}

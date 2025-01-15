@@ -3,10 +3,11 @@ import { Navigate, Outlet } from 'react-router-dom';
 
 type ProtectedRouteProps = {
   account: Eip1193Account | undefined;
+  connectingWallet: boolean;
 };
 
-const ProtectedRoute = ({ account }: ProtectedRouteProps) => {
-  if (!account) {
+const ProtectedRoute = ({ account, connectingWallet }: ProtectedRouteProps) => {
+  if (!account || connectingWallet) {
     // Redirect to the root route if no account
     return <Navigate to='/' replace />;
   }

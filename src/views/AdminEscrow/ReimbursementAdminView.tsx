@@ -9,8 +9,8 @@ import { toast } from 'react-toastify';
 import { AztecAddress } from '@aztec/circuits.js';
 import Loader from '../../components/Loader';
 import useRegistryContract from '../../hooks/useRegistryContract';
-import { fromUSDCDecimals } from '@mach-34/zimburse/dist/src/utils';
-import { formatUSDC } from "../../utils";
+import { formatUSDC, fromU128, fromUSDCDecimals } from "../../utils";
+import { EVENT_BLOCK_LIMIT } from "../../utils/constants";
 
 const {
   VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT,
@@ -18,11 +18,12 @@ const {
 } = import.meta.env;
 
 type EscrowGroup = {
-  activeMonthly: bigint;
+  activeRecurring: bigint;
   activeSpot: bigint;
   escrowed: bigint;
   id: string;
   title: string;
+  totalReimbursed: bigint;
 };
 
 export default function ReimbursementAdminView(): JSX.Element {
@@ -47,7 +48,6 @@ export default function ReimbursementAdminView(): JSX.Element {
       )
         .send()
         .deployed();
-
       setAddingGroup(2);
 
       // register deployed escrow into registry
@@ -60,11 +60,12 @@ export default function ReimbursementAdminView(): JSX.Element {
       setGroups((prev: any) => [
         ...prev,
         {       
-          activeMonthly: 0n,
+          activeRecurring: 0n,
           activeSpot: 0n,
           escrowed: 0n, 
           id: escrow.address.toString(), 
-          title: name 
+          title: name, 
+          totalReimbursed: 0n
         },
       ]);
       toast.success('Created escrow group!');
@@ -77,58 +78,95 @@ export default function ReimbursementAdminView(): JSX.Element {
     }
   };
 
+  const getActiveEntitlements = async (escrowContract: ZImburseEscrowContract) => {
+      // fetch spot entitlements
+      const spotPromise = escrowContract.methods
+        .view_entitlements(
+          0,
+          account.getAddress(),
+          { _is_some: false, _value: AztecAddress.ZERO },
+          { _is_some: false, _value: 0 },
+          { _is_some: true, _value: true }
+        )
+        .simulate();
+
+      // fetch recurring entitlement
+      const recurringPromise = escrowContract.methods
+        .view_entitlements(
+          0,
+          account.getAddress(),
+          { _is_some: false, _value: AztecAddress.ZERO },
+          { _is_some: false, _value: 0 },
+          { _is_some: true, _value: false }
+        )
+        .simulate();
+
+      const [recurringEntitlements, spotEntitlements] = await Promise.all([recurringPromise, spotPromise]);
+
+      const recurringTotal = recurringEntitlements[0].storage.reduce((acc: bigint, {max_value}: any) => {
+        return acc += fromU128(max_value);
+      }, 0n)
+      const spotTotal = spotEntitlements[0].storage.reduce((acc: bigint, {max_value}: any) => {
+        return acc += fromU128(max_value);
+      }, 0n)
+
+      return {recurringTotal, spotTotal}
+  }
+
+  const getReimbursed = async (): Promise<bigint> => {
+    const { RecurringReimbursementClaimed, SpotReimbursementClaimed } = ZImburseEscrowContract.events
+
+    // @ts-ignore
+    const recurringReimbursementPromise = account!.getEncryptedEvents(RecurringReimbursementClaimed, 1, EVENT_BLOCK_LIMIT);
+
+    // @ts-ignore
+    const spotReimbursementPromise = account!.getEncryptedEvents(SpotReimbursementClaimed, 1, EVENT_BLOCK_LIMIT);
+
+    const [recurringClaimed, spotClaimed] = await Promise.all([recurringReimbursementPromise, spotReimbursementPromise]);
+
+    const claimAmounts = [...recurringClaimed.map(({amount}: any) => amount), ...spotClaimed.map(({amount}: any) => amount)];
+    return claimAmounts.reduce((acc: bigint, amt: bigint) => {
+      return acc += amt;
+    }, 0n);
+  }
+
   const fetchEscrowData = async (
     escrowAddress: AztecAddress
   ): Promise<EscrowGroup | undefined> => {
-    if (!account || !tokenContract || !viewOnlyAccount) return;
+    if (!tokenContract || !viewOnlyAccount) return;
+
     const escrowContract = await ZImburseEscrowContract.at(
       escrowAddress,
       account
     );
 
     // get escrow title
-    const titleBytes = await escrowContract
+    const titlePromise = escrowContract
       .withWallet(viewOnlyAccount)
       .methods.get_title()
       .simulate();
-    const title = Buffer.from(new Uint8Array(titleBytes.map(Number))).toString(
-      'utf8'
-    );
 
     // fetch escrow USDC balance
-    const balance = await tokenContract
+    const balancePromise = tokenContract
       .withWallet(viewOnlyAccount)
       .methods.balance_of_public(escrowAddress)
       .simulate();
 
-    // fetch spot entitlements
-    const spotEntitlements = await escrowContract.methods
-      .view_entitlements(
-        0,
-        account.getAddress(),
-        { _is_some: false, _value: AztecAddress.ZERO },
-        { _is_some: false, _value: 0 },
-        { _is_some: true, _value: true }
-      )
-      .simulate();
+    // wait for all promises to resolve
+    const [titleBytes, balance, totalReimbursed, activeEntitlements] = await Promise.all([titlePromise, balancePromise, getReimbursed(), getActiveEntitlements(escrowContract)]);
 
-    // fetch recurring entitlement
-    const recurringEntitlements = await escrowContract.methods
-      .view_entitlements(
-        0,
-        account.getAddress(),
-        { _is_some: false, _value: AztecAddress.ZERO },
-        { _is_some: false, _value: 0 },
-        { _is_some: true, _value: false }
-      )
-      .simulate();
+    // transform data
+    const title = Buffer.from(new Uint8Array(titleBytes.map(Number))).toString(
+      'utf8'
+    );
 
     return {
-      activeMonthly: 0n,
-      activeSpot: 0n,
+      activeRecurring: activeEntitlements.recurringTotal,
+      activeSpot: activeEntitlements.spotTotal,
       escrowed: balance,
       id: escrowAddress.toString(),
       title,
+      totalReimbursed
     };
   };
 
@@ -136,13 +174,13 @@ export default function ReimbursementAdminView(): JSX.Element {
     if (!account || !registryContract || !viewOnlyAccount) return;
     try {
       const escrows: Array<Promise<EscrowGroup | undefined>> = [];
-      const escrowGroups = await registryContract.methods
-        .get_managed_escrows(0)
+      const escrowGroups = await registryContract.withWallet(account).methods
+        .get_managed_escrows(account.getAddress(), 0)
         .simulate();
 
       const numEscrows = Number(escrowGroups[0].len);
       for (let i = 0; i < numEscrows; i++) {
-        const escrowAddress = escrowGroups[0].storage[i];
+        const escrowAddress = AztecAddress.fromBigInt(escrowGroups[0].storage[i]);
         escrows.push(fetchEscrowData(escrowAddress));
       }
       const escrowData = (await Promise.all(escrows)).filter(
@@ -206,14 +244,14 @@ export default function ReimbursementAdminView(): JSX.Element {
                     <div className='text-xl'>{selectedGroup.title}</div>
                     <div>
                       <div className='text-lg'>
-                        Total reimbursed: $xxx,xxx.xx
+                        Total reimbursed: ${formatUSDC(selectedGroup.totalReimbursed)}
                       </div>
                       <div className='text-lg'>
                         Escrowed: ${formatUSDC(selectedGroup.escrowed)}
                       </div>
                       <div className='text-lg'>
                         Active Monthly Entitlements: $
-                        {formatUSDC(selectedGroup.activeMonthly)}
+                        {formatUSDC(selectedGroup.activeRecurring)}
                       </div>
                       <div className='text-lg'>
                         Active Spot Entitlements: $

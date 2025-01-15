@@ -1,4 +1,4 @@
-import { generateEmailVerifierInputsFromDKIMResult, verifyDKIMSignature} from '@zk-email/zkemail-nr';
+import { generateEmailVerifierInputsFromDKIMResult, verifyDKIMSignature } from '@zk-email/zkemail-nr/dist';
 import { Sequence } from "@zk-email/zkemail-nr/dist/utils";
 import { toUSDCDecimals } from ".";
 
@@ -60,7 +60,17 @@ export const extractLinodeData = async (email: Buffer): Promise<EmailDisplayData
 
 export const extractUnitedData = async (email: Buffer): Promise<EmailDisplayData> => {
     const dkimResult = await verifyDKIMSignature(email);
+
+
+
     const {decoded_body, header, from_address_sequence, to_address_sequence} = generateEmailVerifierInputsFromDKIMResult(dkimResult, {
+        removeSoftLineBreaks: true,
+        extractFrom: true,
+        extractTo: true,
+        maxBodyLength: UNITED_MAX_BODY_LENGTH
+      });
+
+      const dkimRes = generateEmailVerifierInputsFromDKIMResult(dkimResult, {
         removeSoftLineBreaks: true,
         extractFrom: true,
         extractTo: true,
