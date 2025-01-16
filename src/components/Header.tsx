@@ -17,9 +17,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AztecAddress, Fr } from '@aztec/circuits.js';
-import { AztecAccount } from '../utils/constants';
-
-const AZTEC_WALLETS = JSON.parse(import.meta.env.VITE_APP_AZTEC_WALLETS);
+import { AZTEC_WALLETS, AztecAccount } from '../utils/constants';
 
 export default function Header(): JSX.Element {
   const {
@@ -115,7 +113,7 @@ export default function Header(): JSX.Element {
       <div className='flex gap-4 items-center'>
         {account && (
           <div className='border border-black rounded px-2 py-1'>
-            <div className='flex gap-2 items-center justify-between'>
+            <div className='flex gap-4 items-center justify-between'>
               <div className='flex gap-1 items-center'>
                 <div className='text-xs'>Contracts</div>
                 <ReceiptText size={12} />
@@ -133,17 +131,21 @@ export default function Header(): JSX.Element {
               </button>
             </div>
             <div className='mt-2'>
-              <div className='text-xs'>
-                Usdc:{' '}
-                {tokenContract
-                  ? truncateAddress(tokenContract.address.toString())
-                  : 'None found'}
+              <div className='flex gap-4 justify-between text-xs'>
+                <div>Usdc:</div>
+                <div>
+                  {tokenContract
+                    ? truncateAddress(tokenContract.address.toString())
+                    : 'None found'}
+                </div>
               </div>
-              <div className='text-xs'>
-                Escrow Registry:{' '}
-                {registryContract
-                  ? truncateAddress(registryContract.address.toString())
-                  : 'None found'}
+              <div className='flex gap-4 justify-between text-xs'>
+                <div>Escrow Registry:</div>
+                <div>
+                  {registryContract
+                    ? truncateAddress(registryContract.address.toString())
+                    : 'None found'}
+                </div>
               </div>
             </div>
           </div>

@@ -18,9 +18,11 @@ import {
   UniqueNote,
 } from '@aztec/aztec.js';
 import {
+  AZTEC_WALLETS,
   AztecAccount,
   DEFAULT_PXE_URL,
   EVENT_BLOCK_LIMIT,
+  ZIMBURSE_REGISTRY_ADMIN,
   ZIMBURSE_REGISTRY_LS_KEY,
   ZIMBURSE_USDC_LS_KEY,
   ZIMBURSE_WALLET_LS_KEY,
@@ -58,12 +60,6 @@ type AztecContextProps = {
   tokenContract: TokenContract | undefined;
   viewOnlyAccount: AccountWalletWithSecretKey | undefined;
 };
-
-const {
-  VITE_APP_AZTEC_WALLETS: AZTEC_WALLETS,
-  VITE_APP_SUPERUSER_FR: SUPERUSER_FR,
-  VITE_APP_SUPERUSER_FQ: SUPERUSER_FQ,
-} = import.meta.env;
 
 const DEFAULT_AZTEC_CONTEXT_PROPS = {
   account: undefined,
@@ -120,8 +116,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
   >(undefined);
 
   const accounts: Array<AztecAccount> = useMemo(() => {
-    const parsedWallets = JSON.parse(AZTEC_WALLETS);
-    return parsedWallets.map((secretKey: `0x${string}`) => {
+    return AZTEC_WALLETS.map((secretKey: string) => {
       const secretFr = Fr.fromHexString(secretKey);
       const signingKey = deriveSigningKey(secretFr);
       const schnorr = getSchnorrAccount(pxe, secretFr, signingKey, 0);
@@ -230,8 +225,8 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
   const checkRegistryAdmin = async () => {
     const admin = getSchnorrAccount(
       pxe,
-      Fr.fromHexString(SUPERUSER_FR),
-      Fq.fromHexString(SUPERUSER_FQ),
+      Fr.fromHexString(ZIMBURSE_REGISTRY_ADMIN.Fr),
+      Fq.fromHexString(ZIMBURSE_REGISTRY_ADMIN.Fq),
       0
     );
 
@@ -262,6 +257,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const deployContracts = async () => {
+    if (!registryAdmin) return;
     setDeployingContracts(true);
     try {
       const usdc = await TokenContract.deploy(
