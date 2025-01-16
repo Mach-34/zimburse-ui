@@ -8,9 +8,8 @@ import { useAztec } from '../../contexts/AztecContext';
 import { toast } from 'react-toastify';
 import { AztecAddress } from '@aztec/circuits.js';
 import Loader from '../../components/Loader';
-import useRegistryContract from '../../hooks/useRegistryContract';
-import { formatUSDC, fromU128, fromUSDCDecimals } from "../../utils";
-import { EVENT_BLOCK_LIMIT } from "../../utils/constants";
+import { formatUSDC, fromU128 } from '../../utils';
+import { EVENT_BLOCK_LIMIT } from '../../utils/constants';
 
 const {
   VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT,
@@ -27,8 +26,8 @@ type EscrowGroup = {
 };
 
 export default function ReimbursementAdminView(): JSX.Element {
-  const { account, viewOnlyAccount, tokenContract } = useAztec();
-  const registryContract = useRegistryContract(ESCROW_REGISTRY_CONTRACT);
+  const { account, registryContract, viewOnlyAccount, tokenContract } =
+    useAztec();
 
   const [addingGroup, setAddingGroup] = useState<number>(0);
   const [fetchingGroups, setFetchingGroups] = useState<boolean>(true);
@@ -59,13 +58,13 @@ export default function ReimbursementAdminView(): JSX.Element {
 
       setGroups((prev: any) => [
         ...prev,
-        {       
+        {
           activeRecurring: 0n,
           activeSpot: 0n,
-          escrowed: 0n, 
-          id: escrow.address.toString(), 
-          title: name, 
-          totalReimbursed: 0n
+          escrowed: 0n,
+          id: escrow.address.toString(),
+          title: name,
+          totalReimbursed: 0n,
         },
       ]);
       toast.success('Created escrow group!');
@@ -78,57 +77,83 @@ export default function ReimbursementAdminView(): JSX.Element {
     }
   };
 
-  const getActiveEntitlements = async (escrowContract: ZImburseEscrowContract) => {
-      // fetch spot entitlements
-      const spotPromise = escrowContract.methods
-        .view_entitlements(
-          0,
-          account.getAddress(),
-          { _is_some: false, _value: AztecAddress.ZERO },
-          { _is_some: false, _value: 0 },
-          { _is_some: true, _value: true }
-        )
-        .simulate();
+  const getActiveEntitlements = async (
+    escrowContract: ZImburseEscrowContract
+  ) => {
+    // fetch spot entitlements
+    const spotPromise = escrowContract.methods
+      .view_entitlements(
+        0,
+        account.getAddress(),
+        { _is_some: false, _value: AztecAddress.ZERO },
+        { _is_some: false, _value: 0 },
+        { _is_some: true, _value: true }
+      )
+      .simulate();
 
-      // fetch recurring entitlement
-      const recurringPromise = escrowContract.methods
-        .view_entitlements(
-          0,
-          account.getAddress(),
-          { _is_some: false, _value: AztecAddress.ZERO },
-          { _is_some: false, _value: 0 },
-          { _is_some: true, _value: false }
-        )
-        .simulate();
+    // fetch recurring entitlement
+    const recurringPromise = escrowContract.methods
+      .view_entitlements(
+        0,
+        account.getAddress(),
+        { _is_some: false, _value: AztecAddress.ZERO },
+        { _is_some: false, _value: 0 },
+        { _is_some: true, _value: false }
+      )
+      .simulate();
 
-      const [recurringEntitlements, spotEntitlements] = await Promise.all([recurringPromise, spotPromise]);
+    const [recurringEntitlements, spotEntitlements] = await Promise.all([
+      recurringPromise,
+      spotPromise,
+    ]);
 
-      const recurringTotal = recurringEntitlements[0].storage.reduce((acc: bigint, {max_value}: any) => {
-        return acc += fromU128(max_value);
-      }, 0n)
-      const spotTotal = spotEntitlements[0].storage.reduce((acc: bigint, {max_value}: any) => {
-        return acc += fromU128(max_value);
-      }, 0n)
+    const recurringTotal = recurringEntitlements[0].storage.reduce(
+      (acc: bigint, { max_value }: any) => {
+        return (acc += fromU128(max_value));
+      },
+      0n
+    );
+    const spotTotal = spotEntitlements[0].storage.reduce(
+      (acc: bigint, { max_value }: any) => {
+        return (acc += fromU128(max_value));
+      },
+      0n
+    );
 
-      return {recurringTotal, spotTotal}
-  }
+    return { recurringTotal, spotTotal };
+  };
 
   const getReimbursed = async (): Promise<bigint> => {
-    const { RecurringReimbursementClaimed, SpotReimbursementClaimed } = ZImburseEscrowContract.events
+    const { RecurringReimbursementClaimed, SpotReimbursementClaimed } =
+      ZImburseEscrowContract.events;
 
     // @ts-ignore
-    const recurringReimbursementPromise = account!.getEncryptedEvents(RecurringReimbursementClaimed, 1, EVENT_BLOCK_LIMIT);
+    const recurringReimbursementPromise = account!.getEncryptedEvents(
+      RecurringReimbursementClaimed,
+      1,
+      EVENT_BLOCK_LIMIT
+    );
 
     // @ts-ignore
-    const spotReimbursementPromise = account!.getEncryptedEvents(SpotReimbursementClaimed, 1, EVENT_BLOCK_LIMIT);
+    const spotReimbursementPromise = account!.getEncryptedEvents(
+      SpotReimbursementClaimed,
+      1,
+      EVENT_BLOCK_LIMIT
+    );
 
-    const [recurringClaimed, spotClaimed] = await Promise.all([recurringReimbursementPromise, spotReimbursementPromise]);
+    const [recurringClaimed, spotClaimed] = await Promise.all([
+      recurringReimbursementPromise,
+      spotReimbursementPromise,
+    ]);
 
-    const claimAmounts = [...recurringClaimed.map(({amount}: any) => amount), ...spotClaimed.map(({amount}: any) => amount)];
+    const claimAmounts = [
+      ...recurringClaimed.map(({ amount }: any) => amount),
+      ...spotClaimed.map(({ amount }: any) => amount),
+    ];
     return claimAmounts.reduce((acc: bigint, amt: bigint) => {
-      return acc += amt;
+      return (acc += amt);
     }, 0n);
-  }
+  };
 
   const fetchEscrowData = async (
     escrowAddress: AztecAddress
@@ -153,7 +178,13 @@ export default function ReimbursementAdminView(): JSX.Element {
       .simulate();
 
     // wait for all promises to resolve
-    const [titleBytes, balance, totalReimbursed, activeEntitlements] = await Promise.all([titlePromise, balancePromise, getReimbursed(), getActiveEntitlements(escrowContract)]);
+    const [titleBytes, balance, totalReimbursed, activeEntitlements] =
+      await Promise.all([
+        titlePromise,
+        balancePromise,
+        getReimbursed(),
+        getActiveEntitlements(escrowContract),
+      ]);
 
     // transform data
     const title = Buffer.from(new Uint8Array(titleBytes.map(Number))).toString(
@@ -166,7 +197,7 @@ export default function ReimbursementAdminView(): JSX.Element {
       escrowed: balance,
       id: escrowAddress.toString(),
       title,
-      totalReimbursed
+      totalReimbursed,
     };
   };
 
@@ -174,13 +205,16 @@ export default function ReimbursementAdminView(): JSX.Element {
     if (!account || !registryContract || !viewOnlyAccount) return;
     try {
       const escrows: Array<Promise<EscrowGroup | undefined>> = [];
-      const escrowGroups = await registryContract.withWallet(account).methods
-        .get_managed_escrows(account.getAddress(), 0)
+      const escrowGroups = await registryContract
+        .withWallet(account)
+        .methods.get_managed_escrows(account.getAddress(), 0)
         .simulate();
 
       const numEscrows = Number(escrowGroups[0].len);
       for (let i = 0; i < numEscrows; i++) {
-        const escrowAddress = AztecAddress.fromBigInt(escrowGroups[0].storage[i]);
+        const escrowAddress = AztecAddress.fromBigInt(
+          escrowGroups[0].storage[i]
+        );
         escrows.push(fetchEscrowData(escrowAddress));
       }
       const escrowData = (await Promise.all(escrows)).filter(
@@ -244,7 +278,8 @@ export default function ReimbursementAdminView(): JSX.Element {
                     <div className='text-xl'>{selectedGroup.title}</div>
                     <div>
                       <div className='text-lg'>
-                        Total reimbursed: ${formatUSDC(selectedGroup.totalReimbursed)}
+                        Total reimbursed: $
+                        {formatUSDC(selectedGroup.totalReimbursed)}
                       </div>
                       <div className='text-lg'>
                         Escrowed: ${formatUSDC(selectedGroup.escrowed)}
