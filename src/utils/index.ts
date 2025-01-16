@@ -1,15 +1,22 @@
+import dkimKeys from '@mach-34/zimburse/dist/src/dkim/keyHashes.json';
+
+type KeyInput = {
+    id: bigint,
+    hash: bigint
+}
+
 export const formatUSDC = (val: bigint) => {
 
     const { decimal, integer } = fromUSDCDecimals(val);
 
-     // Convert integer part to string with commas
-     const integerStr = integer.toLocaleString('en-US');
+    // Convert integer part to string with commas
+    const integerStr = integer.toLocaleString('en-US');
 
-     if(decimal) {
+    if (decimal) {
         return `${integerStr}.${decimal}`;
-     }
-     return integerStr;
-} 
+    }
+    return integerStr;
+}
 
 export const fromUSDCDecimals = (amount: bigint): { integer: bigint; decimal: bigint } => {
     const integer = amount / 10n ** 6n;
@@ -19,6 +26,28 @@ export const fromUSDCDecimals = (amount: bigint): { integer: bigint; decimal: bi
 
 export const fromU128 = (u128: { lo: bigint; hi: bigint }): bigint => {
     return u128.lo + u128.hi * 2n ** 64n;
+}
+
+export const getDkimInputs = (): KeyInput[][] => {
+    const batches: KeyInput[][] = [];
+    for (let i = 0; i < dkimKeys.length; i += 4) {
+        const batch: KeyInput[] = [];
+        for (let j = i; j < i + 4; j++) {
+            if (j >= dkimKeys.length) {
+                batch.push({
+                    id: BigInt(0),
+                    hash: BigInt(0)
+                })
+            } else {
+                batch.push({
+                    id: BigInt(dkimKeys[j].id),
+                    hash: BigInt(dkimKeys[j].hash)
+                });
+            }
+        }
+        batches.push(batch);
+    }
+    return batches
 }
 
 /** parses a string  */
@@ -34,9 +63,9 @@ export const truncateAddress = (address: string, startLen?: number, endLen?: num
 }
 
 export const toUSDCDecimals = (amount: string | bigint): bigint => {
-    if(typeof amount === 'string') {
+    if (typeof amount === 'string') {
         const split = amount.split('.');
-        if(split[1]) {
+        if (split[1]) {
             return BigInt(`${split[0]}${split[1].padEnd(6, '0')}`)
         }
         return BigInt(split[0]) * 10n ** 6n

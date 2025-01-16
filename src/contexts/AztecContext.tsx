@@ -9,7 +9,6 @@ import {
   useMemo,
 } from 'react';
 import {
-  AccountManager,
   AccountWalletWithSecretKey,
   AztecAddress,
   BatchCall,
@@ -17,13 +16,13 @@ import {
   Fq,
   Fr,
   UniqueNote,
-  waitForPXE,
 } from '@aztec/aztec.js';
 import {
   AztecAccount,
   DEFAULT_PXE_URL,
   EVENT_BLOCK_LIMIT,
   ZIMBURSE_REGISTRY_LS_KEY,
+  ZIMBURSE_USDC_LS_KEY,
   ZIMBURSE_WALLET_LS_KEY,
 } from '../utils/constants';
 import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
@@ -33,15 +32,23 @@ import {
   ZImburseEscrowContract,
   ZImburseRegistryContract,
 } from '../artifacts';
-import { deriveSigningKey } from '@aztec/circuits.js';
+import {
+  computeContractClassId,
+  deriveSigningKey,
+  getContractClassFromArtifact,
+} from '@aztec/circuits.js';
 import { toast } from 'react-toastify';
 import chunk from 'lodash.chunk';
+import { USDC_TOKEN } from '@mach-34/zimburse/dist/src/constants';
+import { getDkimInputs } from '../utils';
 
 type AztecContextProps = {
   account: AccountWalletWithSecretKey | undefined;
   accounts: Array<AztecAccount>;
   connecting: boolean;
   connectWallet: (secretKey: Fr) => Promise<void>;
+  deployContracts: () => Promise<void>;
+  deployingContracts: boolean;
   disconnectWallet: () => Promise<void>;
   fetchingTokenBalance: boolean;
   registryAdmin: AccountWalletWithSecretKey | undefined;
@@ -63,6 +70,8 @@ const DEFAULT_AZTEC_CONTEXT_PROPS = {
   accounts: [],
   connecting: false,
   connectWallet: async (_secretKey: Fr) => {},
+  deployContracts: async () => {},
+  deployingContracts: false,
   disconnectWallet: async () => {},
   fetchingTokenBalance: false,
   registryAdmin: undefined,
@@ -90,20 +99,18 @@ type ZimburseContracts = {
 
 const pxe = createPXEClient(DEFAULT_PXE_URL);
 const [viewOnlyAccount] = await getInitialTestAccountsWallets(pxe);
-const registryAdmin = await getSchnorrAccount(
-  pxe,
-  Fr.fromHexString(SUPERUSER_FR),
-  Fq.fromHexString(SUPERUSER_FQ),
-  0
-).getWallet();
 
 export const AztecProvider = ({ children }: { children: ReactNode }) => {
   const [account, setAccount] = useState<
     AccountWalletWithSecretKey | undefined
   >(undefined);
   const [connecting, setConnecting] = useState<boolean>(false);
+  const [deployingContracts, setDeployingContracts] = useState<boolean>(false);
   const [fetchingTokenBalance, setFetchingTokenBalance] =
     useState<boolean>(false);
+  const [registryAdmin, setRegistryAdmin] = useState<
+    AccountWalletWithSecretKey | undefined
+  >(undefined);
   const [tokenBalance, setTokenBalance] = useState<TokenBalance>({
     private: 0n,
     public: 0n,
@@ -220,6 +227,24 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     return schnorr.getWallet();
   };
 
+  const checkRegistryAdmin = async () => {
+    const admin = getSchnorrAccount(
+      pxe,
+      Fr.fromHexString(SUPERUSER_FR),
+      Fq.fromHexString(SUPERUSER_FQ),
+      0
+    );
+
+    const isRegistered = await pxe.getRegisteredAccount(admin.getAddress());
+
+    // if account not already registered then deploy to pxe
+    if (!isRegistered) {
+      await admin.deploy().wait();
+    }
+
+    setRegistryAdmin(await admin.getWallet());
+  };
+
   const connectWallet = async (secretKey: Fr) => {
     setConnecting(true);
     try {
@@ -233,6 +258,54 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
       toast.error('Error connecting wallet!');
     } finally {
       setConnecting(false);
+    }
+  };
+
+  const deployContracts = async () => {
+    setDeployingContracts(true);
+    try {
+      const usdc = await TokenContract.deploy(
+        registryAdmin,
+        registryAdmin.getAddress(),
+        USDC_TOKEN.symbol,
+        USDC_TOKEN.name,
+        USDC_TOKEN.decimals
+      )
+        .send()
+        .deployed();
+
+      // deploy registry contract
+      const dkimKeys = getDkimInputs();
+
+      // calculate contract class ID
+      const artifact = ZImburseEscrowContract.artifact;
+      // @ts-ignore
+      const contractClass = getContractClassFromArtifact(artifact);
+      const escrowClassId = computeContractClassId(contractClass);
+
+      const registry = await ZImburseRegistryContract.deploy(
+        registryAdmin,
+        usdc.address,
+        escrowClassId,
+        dkimKeys[0].map((key) => key.id),
+        dkimKeys[0].map((key) => key.hash)
+      )
+        .send()
+        .deployed();
+
+      // store contract addresses in local storage
+      localStorage.setItem(ZIMBURSE_USDC_LS_KEY, usdc.address.toString());
+      localStorage.setItem(
+        ZIMBURSE_REGISTRY_LS_KEY,
+        registry.address.toString()
+      );
+
+      toast.success('Contracts succesfully deployed');
+      setZimburseContracts({ registry, usdc });
+    } catch (err) {
+      toast.error('Error occurred deploying contracts');
+    } finally {
+      setDeployingContracts(false);
     }
   };
 
@@ -264,11 +337,11 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     const storedRegistryAddress = localStorage.getItem(
       ZIMBURSE_REGISTRY_LS_KEY
     );
-    const storedUsdcAddress = localStorage.getItem(ZIMBURSE_WALLET_LS_KEY);
+    const storedUsdcAddress = localStorage.getItem(ZIMBURSE_USDC_LS_KEY);
 
     if (storedRegistryAddress && storedUsdcAddress) {
       try {
-        const registryContract = await ZImburseRegistryContract.at(
+        const registry = await ZImburseRegistryContract.at(
           AztecAddress.fromString(storedRegistryAddress),
           account!
         );
@@ -277,23 +350,54 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
           AztecAddress.fromString(storedUsdcAddress),
           account!
         );
-      } catch (err) {
-        console.log('Error: ', err);
+
+        setZimburseContracts({ registry, usdc });
+      } catch (err: any) {
+        const message: string = err.message;
+        const contractInstanceError = message.indexOf(
+          `has not been registered in the wallet's PXE`
+        );
+        if (contractInstanceError !== -1) {
+          const contractAddressEndIndex = contractInstanceError - 2;
+          const contractAddressStartIndex =
+            message.lastIndexOf(' ', contractAddressEndIndex) + 1;
+          const contractAddress = message.slice(
+            contractAddressStartIndex,
+            contractAddressEndIndex + 1
+          );
+
+          if (contractAddress === storedRegistryAddress) {
+            toast.error(
+              `Saved registry contract at ${contractAddress} not found. Please redeploy`
+            );
+          } else {
+            toast.error(
+              `Saved USDC contract at ${contractAddress} not found. Please redeploy`
+            );
+          }
+        } else {
+          toast.error('Error occurred connecting to contracts');
+        }
       }
     }
   };
 
   useEffect(() => {
     (async () => {
-      if (!account || !viewOnlyAccount) return;
-      await loadContractInstances();
-      // await fetchTokenBalances(usdc);
-      // setTokenContract(usdc);
-
-      // check for events to nullify
-      await checkForCounterpartyNullifications();
+      if (zimburseContracts) {
+        await fetchTokenBalances(zimburseContracts.usdc);
+        // check for events to nullify
+        await checkForCounterpartyNullifications();
+      }
     })();
-  }, [account, viewOnlyAccount]);
+  }, [zimburseContracts]);
+
+  useEffect(() => {
+    (async () => {
+      if (!account) return;
+      await loadContractInstances();
+    })();
+  }, [account]);
 
   useEffect(() => {
     (async () => {
@@ -309,6 +413,11 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     })();
   }, [accounts]);
 
+  useEffect(() => {
+    // check if registry admin exists and if not then register to pxe
+    checkRegistryAdmin();
+  }, []);
+
   return (
     <AztecContext.Provider
       value={{
@@ -317,6 +426,8 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         connecting,
         connectWallet,
         disconnectWallet,
+        deployContracts,
+        deployingContracts,
         fetchingTokenBalance,
         registryAdmin,
         registryContract: zimburseContracts?.registry,

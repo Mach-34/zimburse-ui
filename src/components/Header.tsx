@@ -7,7 +7,14 @@ import { toast } from 'react-toastify';
 import { toUSDCDecimals } from '../utils';
 import logo from '../assets/logo.png';
 import usdc from '../assets/usdc.png';
-import { Copy, Lock, LockOpen, Plus, ReceiptText } from 'lucide-react';
+import {
+  Copy,
+  Lock,
+  LockOpen,
+  Plus,
+  ReceiptText,
+  RotateCcw,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AztecAddress, Fr } from '@aztec/circuits.js';
 import { AztecAccount } from '../utils/constants';
@@ -20,9 +27,12 @@ export default function Header(): JSX.Element {
     accounts,
     connectWallet,
     connecting,
+    deployContracts,
+    deployingContracts,
     disconnectWallet,
     fetchingTokenBalance,
     registryAdmin,
+    registryContract,
     setTokenBalance,
     tokenBalance,
     tokenContract,
@@ -54,6 +64,13 @@ export default function Header(): JSX.Element {
       toast.error('Error occurred.');
     }
   };
+
+  const deployButtonText = useMemo(() => {
+    if (registryContract || tokenContract) {
+      return deployingContracts ? 'Redeploying...' : 'Redeploy';
+    }
+    return deployingContracts ? 'Deploying...' : 'Deploy';
+  }, [deployingContracts, registryContract, tokenContract]);
 
   const mintUsdc = async () => {
     if (!account || !registryAdmin || !tokenContract) return;
@@ -96,21 +113,42 @@ export default function Header(): JSX.Element {
         src={logo}
       />
       <div className='flex gap-4 items-center'>
-        <div className='border border-black rounded px-2 py-1'>
-          <div className='flex gap-2 items-center'>
-            <div className='flex gap-1 items-center'>
-              <div className='text-xs'>Contracts</div>
-              <ReceiptText size={12} />
+        {account && (
+          <div className='border border-black rounded px-2 py-1'>
+            <div className='flex gap-2 items-center justify-between'>
+              <div className='flex gap-1 items-center'>
+                <div className='text-xs'>Contracts</div>
+                <ReceiptText size={12} />
+              </div>
+              <button
+                className='bg-yellow-400 flex gap-1 items-center p-1 text-xs'
+                onClick={() => deployContracts()}
+              >
+                {deployButtonText}
+                {deployingContracts ? (
+                  <Loader size={12} />
+                ) : (
+                  <RotateCcw size={12} />
+                )}
+              </button>
             </div>
-            <button>Deploy</button>
+            <div className='mt-2'>
+              <div className='text-xs'>
+                Usdc:{' '}
+                {tokenContract
+                  ? truncateAddress(tokenContract.address.toString())
+                  : 'None found'}
+              </div>
+              <div className='text-xs'>
+                Escrow Registry:{' '}
+                {registryContract
+                  ? truncateAddress(registryContract.address.toString())
+                  : 'None found'}
+              </div>
+            </div>
           </div>
-          <div className='mt-2'>
-            <div className='text-xs'>Usdc: TODO</div>
-            <div className='text-xs'>Escrow Registry: TODO</div>
-          </div>
-        </div>
-        {account &&
-          !connecting &&
+        )}
+        {tokenContract &&
           (fetchingTokenBalance ? (
             <div className='flex gap-2 items-center mr-8'>
               <div className='text-sm'>Fetching token balances...</div>
