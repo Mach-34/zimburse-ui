@@ -112,23 +112,25 @@ export default function Header(): JSX.Element {
       />
       <div className='flex gap-4 items-center'>
         {account && (
-          <div className='border border-black rounded px-2 py-1'>
-            <div className='flex gap-4 items-center justify-between'>
-              <div className='flex gap-1 items-center'>
-                <div className='text-xs'>Contracts</div>
-                <ReceiptText size={12} />
+          <div className='border border-black flex gap-4 items-center rounded px-2 py-1'>
+            <div>
+              <div>
+                <div className='flex gap-1 items-center'>
+                  <div className='text-xs'>Contracts</div>
+                  <ReceiptText size={12} />
+                </div>
+                <button
+                  className='bg-yellow-400 flex gap-1 items-center mt-2 px-1 py-0.5 rounded-full text-[10px]'
+                  onClick={() => deployContracts()}
+                >
+                  {deployButtonText}
+                  {deployingContracts ? (
+                    <Loader size={10} />
+                  ) : (
+                    <RotateCcw size={10} />
+                  )}
+                </button>
               </div>
-              <button
-                className='bg-yellow-400 flex gap-1 items-center p-1 text-xs'
-                onClick={() => deployContracts()}
-              >
-                {deployButtonText}
-                {deployingContracts ? (
-                  <Loader size={12} />
-                ) : (
-                  <RotateCcw size={12} />
-                )}
-              </button>
             </div>
             <div className='mt-2'>
               <div className='flex gap-4 justify-between text-xs'>
@@ -166,12 +168,12 @@ export default function Header(): JSX.Element {
                       <img alt='USDC' className='h-4 w-4' src={usdc} />
                     </div>
                     <button
-                      className='bg-green-600 flex gap-2 items-center rounded-full px-2 py-1 text-white text-xs/[10px]'
+                      className='bg-green-600 flex gap-1 items-center rounded-full px-1 py-0.5 text-white text-[10px]'
                       onClick={() => mintUsdc()}
                     >
                       {minting ? 'Minting...' : 'Mint'}
-                      {!minting && <Plus size={12} />}
-                      {minting && <Loader size={12} />}
+                      {!minting && <Plus size={10} />}
+                      {minting && <Loader size={10} />}
                     </button>
                   </div>
                   <div>
