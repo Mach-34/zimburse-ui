@@ -6,8 +6,8 @@ import { AztecAddress } from '@aztec/circuits.js';
 import { toast } from 'react-toastify';
 import Loader from '../../../components/Loader';
 import { EscrowData } from '..';
-import { formatUSDC, toUSDCDecimals } from "../../../utils";
-import { NUMBER_INPUT_REGEX } from "../../../utils/constants";
+import { formatUSDC, toUSDCDecimals } from '../../../utils';
+import { NUMBER_INPUT_REGEX } from '../../../utils/constants';
 
 type DepositModalProps = {
   activeRecurring: bigint;
@@ -33,7 +33,7 @@ export default function DepositModal({
     tokenBalance,
     tokenContract,
   } = useAztec();
-  const [depositAmt, setDepositAmt] = useState<string>("");
+  const [depositAmt, setDepositAmt] = useState<string>('');
   const [depositing, setDepositing] = useState<boolean>(false);
 
   const depositUsdc = async () => {
@@ -41,8 +41,9 @@ export default function DepositModal({
     const amount = toUSDCDecimals(depositAmt);
     try {
       setDepositing(true);
-      await tokenContract.methods
-        .transfer_in_public(
+      await tokenContract
+        .withWallet(account)
+        .methods.transfer_in_public(
           account.getAddress(),
           AztecAddress.fromString(escrowAddress),
           amount,
@@ -71,16 +72,16 @@ export default function DepositModal({
   };
 
   const exceedsBalance = useMemo(() => {
-    if(depositAmt === "") return;
+    if (depositAmt === '') return;
     const intAmount = toUSDCDecimals(depositAmt);
     return intAmount > tokenBalance.public;
   }, [depositAmt, tokenBalance]);
 
   const handleDepositInput = (val: string) => {
-    if(NUMBER_INPUT_REGEX.test(val)) {
-      setDepositAmt(val)
+    if (NUMBER_INPUT_REGEX.test(val)) {
+      setDepositAmt(val);
     }
-  }
+  };
 
   return (
     <Modal height={70} onClose={onClose} open={open} width={80}>
@@ -109,7 +110,7 @@ export default function DepositModal({
               <input
                 className='bg-zimburseGray'
                 onChange={(e) => handleDepositInput(e.target.value)}
-                placeholder="Enter deposit amount"
+                placeholder='Enter deposit amount'
                 value={depositAmt}
               />
             </div>

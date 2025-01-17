@@ -11,14 +11,14 @@ import ProtectedRoute from './components/ProtectedRoute';
 Modal.setAppElement('#root');
 
 function App() {
-  const { account, connecting } = useAztec();
+  const { account } = useAztec();
   const router = createBrowserRouter([
     {
       path: '/',
       element: <LandingView />,
     },
     {
-      element: <ProtectedRoute account={account} connectingWallet={connecting} />,
+      element: <ProtectedRoute account={account} />,
       children: [
         {
           path: '/reimbursements',
