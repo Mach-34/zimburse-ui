@@ -24,7 +24,6 @@ export default function Header(): JSX.Element {
   const {
     account,
     connectWallet,
-    connecting,
     deployContracts,
     deployingContracts,
     disconnectWallet,
@@ -95,14 +94,14 @@ export default function Header(): JSX.Element {
   };
 
   const walletButtonText = useMemo(() => {
-    if (connecting) {
-      return 'Connecting to Aztec...';
+    if (!wallets.length) {
+      return 'Loading Aztec Wallets...';
     } else if (account) {
       return truncateAddress(account.getAddress().toString());
     } else {
       return 'Connect Wallet';
     }
-  }, [account, connecting]);
+  }, [account, wallets]);
 
   return (
     <div className='flex items-center justify-between py-5 px-10'>

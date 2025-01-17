@@ -42,18 +42,10 @@ export type EscrowData = {
 
 export const VERIFIERS: { [key: string]: number } = { Linode: 2, United: 5 };
 
-const { VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT } =
-  import.meta.env;
-
 export default function ReimbursementManagementView(): JSX.Element {
   const { id: escrowAddress } = useParams();
-  const {
-    account,
-    registryAdmin,
-    registryContract,
-    tokenContract,
-    viewOnlyAccount,
-  } = useAztec();
+  const { account, registryAdmin, registryContract, tokenContract } =
+    useAztec();
   const escrowContract = useEscrowContract(escrowAddress!);
   const navigate = useNavigate();
 
@@ -140,13 +132,10 @@ export default function ReimbursementManagementView(): JSX.Element {
   };
 
   const fetchEscrowData = async () => {
-    const titlePromise = escrowContract!
-      .withWallet(viewOnlyAccount)
-      .methods.get_title()
-      .simulate();
+    const titlePromise = escrowContract!.methods.get_title().simulate();
 
     const balancePromise = tokenContract!
-      .withWallet(viewOnlyAccount!)
+      .withWallet(account!)
       .methods.balance_of_public(escrowContract.address)
       .simulate();
 
@@ -375,25 +364,13 @@ export default function ReimbursementManagementView(): JSX.Element {
 
   useEffect(() => {
     (async () => {
-      if (
-        account &&
-        escrowContract &&
-        registryContract &&
-        tokenContract &&
-        viewOnlyAccount
-      ) {
+      if (account && escrowContract && registryContract && tokenContract) {
         const { participants, ...rest } = await fetchEscrowData();
         setEscrowData(rest);
         setRecipients(participants);
       }
     })();
-  }, [
-    account,
-    escrowContract,
-    registryContract,
-    tokenContract,
-    viewOnlyAccount,
-  ]);
+  }, [account, escrowContract, registryContract, tokenContract]);
 
   return (
     <AppLayout>

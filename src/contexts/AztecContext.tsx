@@ -46,7 +46,6 @@ import { getDkimInputs } from '../utils';
 
 type AztecContextProps = {
   account: AccountWalletWithSecretKey | undefined;
-  connecting: boolean;
   connectWallet: (wallet: AccountWalletWithSecretKey) => Promise<void>;
   deployContracts: () => Promise<void>;
   deployingContracts: boolean;
@@ -57,13 +56,11 @@ type AztecContextProps = {
   setTokenBalance: Dispatch<SetStateAction<TokenBalance>>;
   tokenBalance: TokenBalance;
   tokenContract: TokenContract | undefined;
-  viewOnlyAccount: AccountWalletWithSecretKey | undefined;
   wallets: AccountWalletWithSecretKey[];
 };
 
 const DEFAULT_AZTEC_CONTEXT_PROPS = {
   account: undefined,
-  connecting: false,
   connectWallet: async (_wallet: AccountWalletWithSecretKey) => {},
   deployContracts: async () => {},
   deployingContracts: false,
@@ -74,7 +71,6 @@ const DEFAULT_AZTEC_CONTEXT_PROPS = {
   setTokenBalance: (() => {}) as Dispatch<SetStateAction<TokenBalance>>,
   tokenBalance: { private: 0n, public: 0n },
   tokenContract: undefined,
-  viewOnlyAccount: undefined,
   wallets: [],
 };
 
@@ -93,13 +89,11 @@ type ZimburseContracts = {
 };
 
 const pxe = createPXEClient(DEFAULT_PXE_URL);
-const [viewOnlyAccount] = await getInitialTestAccountsWallets(pxe);
 
 export const AztecProvider = ({ children }: { children: ReactNode }) => {
   const [account, setAccount] = useState<
     AccountWalletWithSecretKey | undefined
   >(undefined);
-  const [connecting, setConnecting] = useState<boolean>(false);
   const [deployingContracts, setDeployingContracts] = useState<boolean>(false);
   const [fetchingTokenBalance, setFetchingTokenBalance] =
     useState<boolean>(false);
@@ -293,14 +287,12 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchTokenBalances = async (usdc: TokenContract) => {
     setFetchingTokenBalance(true);
-    const publicBalance = await usdc
-      .withWallet(viewOnlyAccount)
-      .methods.balance_of_public(account!.getAddress())
+    const publicBalance = await usdc.methods
+      .balance_of_public(account!.getAddress())
       .simulate();
 
-    const privateBalance = await usdc
-      .withWallet(viewOnlyAccount)
-      .methods.balance_of_private(account!.getAddress())
+    const privateBalance = await usdc.methods
+      .balance_of_private(account!.getAddress())
       .simulate();
 
     setTokenBalance({
@@ -400,7 +392,6 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     <AztecContext.Provider
       value={{
         account,
-        connecting,
         connectWallet,
         disconnectWallet,
         deployContracts,
@@ -411,7 +402,6 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         setTokenBalance,
         tokenBalance,
         tokenContract: zimburseContracts?.usdc,
-        viewOnlyAccount,
         wallets,
       }}
     >

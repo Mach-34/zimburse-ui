@@ -26,8 +26,7 @@ type EscrowGroup = {
 };
 
 export default function ReimbursementAdminView(): JSX.Element {
-  const { account, registryContract, viewOnlyAccount, tokenContract } =
-    useAztec();
+  const { account, registryContract, tokenContract } = useAztec();
 
   const [addingGroup, setAddingGroup] = useState<number>(0);
   const [fetchingGroups, setFetchingGroups] = useState<boolean>(true);
@@ -158,7 +157,7 @@ export default function ReimbursementAdminView(): JSX.Element {
   const fetchEscrowData = async (
     escrowAddress: AztecAddress
   ): Promise<EscrowGroup | undefined> => {
-    if (!tokenContract || !viewOnlyAccount) return;
+    if (!tokenContract) return;
 
     const escrowContract = await ZImburseEscrowContract.at(
       escrowAddress,
@@ -166,15 +165,11 @@ export default function ReimbursementAdminView(): JSX.Element {
     );
 
     // get escrow title
-    const titlePromise = escrowContract
-      .withWallet(viewOnlyAccount)
-      .methods.get_title()
-      .simulate();
+    const titlePromise = escrowContract.methods.get_title().simulate();
 
     // fetch escrow USDC balance
-    const balancePromise = tokenContract
-      .withWallet(viewOnlyAccount)
-      .methods.balance_of_public(escrowAddress)
+    const balancePromise = tokenContract.methods
+      .balance_of_public(escrowAddress)
       .simulate();
 
     // wait for all promises to resolve
@@ -202,7 +197,7 @@ export default function ReimbursementAdminView(): JSX.Element {
   };
 
   const fetchEscrowGroups = async () => {
-    if (!account || !registryContract || !viewOnlyAccount) return;
+    if (!account || !registryContract) return;
     try {
       const escrows: Array<Promise<EscrowGroup | undefined>> = [];
       const escrowGroups = await registryContract

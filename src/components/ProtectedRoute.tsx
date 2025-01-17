@@ -1,13 +1,12 @@
-import { Eip1193Account } from '@shieldswap/wallet-sdk/eip1193';
+import { AccountWalletWithSecretKey } from '@aztec/aztec.js';
 import { Navigate, Outlet } from 'react-router-dom';
 
 type ProtectedRouteProps = {
-  account: Eip1193Account | undefined;
-  connectingWallet: boolean;
+  account: AccountWalletWithSecretKey | undefined;
 };
 
-const ProtectedRoute = ({ account, connectingWallet }: ProtectedRouteProps) => {
-  if (!account || connectingWallet) {
+const ProtectedRoute = ({ account }: ProtectedRouteProps) => {
+  if (!account) {
     // Redirect to the root route if no account
     return <Navigate to='/' replace />;
   }
