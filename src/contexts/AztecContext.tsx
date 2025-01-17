@@ -6,7 +6,6 @@ import {
   useState,
   ReactNode,
   useEffect,
-  useMemo,
 } from 'react';
 import {
   AccountWalletWithSecretKey,
@@ -19,7 +18,6 @@ import {
 } from '@aztec/aztec.js';
 import {
   AZTEC_WALLETS,
-  AztecAccount,
   DEFAULT_PXE_URL,
   EVENT_BLOCK_LIMIT,
   ZIMBURSE_REGISTRY_ADMIN,
@@ -27,7 +25,6 @@ import {
   ZIMBURSE_USDC_LS_KEY,
   ZIMBURSE_WALLET_LS_KEY,
 } from '../utils/constants';
-import { getInitialTestAccountsWallets } from '@aztec/accounts/testing';
 import { getSchnorrAccount } from '@aztec/accounts/schnorr';
 import {
   TokenContract,
@@ -51,6 +48,7 @@ type AztecContextProps = {
   deployingContracts: boolean;
   disconnectWallet: () => Promise<void>;
   fetchingTokenBalance: boolean;
+  loadingContracts: boolean;
   registryAdmin: AccountWalletWithSecretKey | undefined;
   registryContract: ZImburseRegistryContract | undefined;
   setTokenBalance: Dispatch<SetStateAction<TokenBalance>>;
@@ -66,6 +64,7 @@ const DEFAULT_AZTEC_CONTEXT_PROPS = {
   deployingContracts: false,
   disconnectWallet: async () => {},
   fetchingTokenBalance: false,
+  loadingContracts: false,
   registryAdmin: undefined,
   registryContract: undefined,
   setTokenBalance: (() => {}) as Dispatch<SetStateAction<TokenBalance>>,
@@ -97,6 +96,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
   const [deployingContracts, setDeployingContracts] = useState<boolean>(false);
   const [fetchingTokenBalance, setFetchingTokenBalance] =
     useState<boolean>(false);
+  const [loadingContracts, setLoadingContracts] = useState<boolean>(true);
   const [registryAdmin, setRegistryAdmin] = useState<
     AccountWalletWithSecretKey | undefined
   >(undefined);
@@ -349,6 +349,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     }
+    setLoadingContracts(false);
   };
 
   useEffect(() => {
@@ -397,6 +398,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         deployContracts,
         deployingContracts,
         fetchingTokenBalance,
+        loadingContracts,
         registryAdmin,
         registryContract: zimburseContracts?.registry,
         setTokenBalance,

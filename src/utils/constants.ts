@@ -1,10 +1,3 @@
-import { AztecAddress, Fr } from "@aztec/circuits.js";
-
-export type AztecAccount = {
-    address: AztecAddress;
-    secretKey: Fr;
-}
-
 export const AZTEC_WALLETS = [
     "0x15b5a0621c0ea5d3b84cc6e5b0f217332cb099f94486b056fcde40e3f0eb55ca",
     "0x21c3c383ecd5ed3840f518450d630c0f4c002c300e09203d488338af7008af58",
