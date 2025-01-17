@@ -11,11 +11,6 @@ import Loader from '../../components/Loader';
 import { formatUSDC, fromU128 } from '../../utils';
 import { EVENT_BLOCK_LIMIT } from '../../utils/constants';
 
-const {
-  VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT,
-  VITE_APP_USDC_CONTRACT: USDC_CONTRACT,
-} = import.meta.env;
-
 type EscrowGroup = {
   activeRecurring: bigint;
   activeSpot: bigint;
@@ -35,13 +30,13 @@ export default function ReimbursementAdminView(): JSX.Element {
   const [showGroupModal, setShowGroupModal] = useState<boolean>(false);
 
   const addEscrowGroup = async (name: string) => {
-    if (!account || !registryContract) return;
+    if (!account || !registryContract || !tokenContract) return;
     setAddingGroup(1);
     try {
       const escrow = await ZImburseEscrowContract.deploy(
         account,
-        AztecAddress.fromString(ESCROW_REGISTRY_CONTRACT),
-        AztecAddress.fromString(USDC_CONTRACT),
+        registryContract.address,
+        tokenContract.address,
         name
       )
         .send()
