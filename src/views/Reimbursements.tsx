@@ -71,11 +71,6 @@ export function breakIntoCapsules(data: number[], chunkSize?: number): Fr[][] {
   return chunks.reverse();
 }
 
-const {
-  VITE_APP_ESCROW_REGISTRY_CONTRACT: ESCROW_REGISTRY_CONTRACT,
-  VITE_APP_USDC_CONTRACT: USDC_CONTRACT,
-} = import.meta.env;
-
 export default function ReimbursementsView(): JSX.Element {
   const { account, registryContract, setTokenBalance, tokenContract } =
     useAztec();
