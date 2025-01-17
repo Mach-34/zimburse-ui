@@ -93,8 +93,9 @@ export default function ReimbursementsView(): JSX.Element {
     const formattedEntitlements = [];
 
     // fetch participant escrows
-    const participantEscrows = await registryContract.methods
-      .get_participant_escrows(account.getAddress(), 0)
+    const participantEscrows = await registryContract
+      .withWallet(account)
+      .methods.get_participant_escrows(account.getAddress(), 0)
       .simulate();
 
     const { len, storage } = participantEscrows[0];

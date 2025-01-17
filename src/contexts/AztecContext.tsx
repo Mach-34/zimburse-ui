@@ -46,9 +46,8 @@ import { getDkimInputs } from '../utils';
 
 type AztecContextProps = {
   account: AccountWalletWithSecretKey | undefined;
-  accounts: Array<AztecAccount>;
   connecting: boolean;
-  connectWallet: (secretKey: Fr) => Promise<void>;
+  connectWallet: (wallet: AccountWalletWithSecretKey) => Promise<void>;
   deployContracts: () => Promise<void>;
   deployingContracts: boolean;
   disconnectWallet: () => Promise<void>;
@@ -59,13 +58,13 @@ type AztecContextProps = {
   tokenBalance: TokenBalance;
   tokenContract: TokenContract | undefined;
   viewOnlyAccount: AccountWalletWithSecretKey | undefined;
+  wallets: AccountWalletWithSecretKey[];
 };
 
 const DEFAULT_AZTEC_CONTEXT_PROPS = {
   account: undefined,
-  accounts: [],
   connecting: false,
-  connectWallet: async (_secretKey: Fr) => {},
+  connectWallet: async (_wallet: AccountWalletWithSecretKey) => {},
   deployContracts: async () => {},
   deployingContracts: false,
   disconnectWallet: async () => {},
@@ -76,7 +75,7 @@ const DEFAULT_AZTEC_CONTEXT_PROPS = {
   tokenBalance: { private: 0n, public: 0n },
   tokenContract: undefined,
   viewOnlyAccount: undefined,
-  zimburseContracts: undefined,
+  wallets: [],
 };
 
 const AztecContext = createContext<AztecContextProps>(
@@ -111,21 +110,10 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     private: 0n,
     public: 0n,
   });
+  const [wallets, setWallets] = useState<AccountWalletWithSecretKey[]>([]);
   const [zimburseContracts, setZimburseContracts] = useState<
     ZimburseContracts | undefined
   >(undefined);
-
-  const accounts: Array<AztecAccount> = useMemo(() => {
-    return AZTEC_WALLETS.map((secretKey: string) => {
-      const secretFr = Fr.fromHexString(secretKey);
-      const signingKey = deriveSigningKey(secretFr);
-      const schnorr = getSchnorrAccount(pxe, secretFr, signingKey, 0);
-      return {
-        address: schnorr.getAddress(),
-        secretKey: Fr.fromHexString(secretKey),
-      };
-    });
-  }, [AZTEC_WALLETS]);
 
   const checkForCounterpartyNullifications = async () => {
     // @ts-ignore
@@ -222,38 +210,31 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     return schnorr.getWallet();
   };
 
-  const checkRegistryAdmin = async () => {
-    const admin = getSchnorrAccount(
-      pxe,
-      Fr.fromHexString(ZIMBURSE_REGISTRY_ADMIN.Fr),
-      Fq.fromHexString(ZIMBURSE_REGISTRY_ADMIN.Fq),
-      0
-    );
-
-    const isRegistered = await pxe.getRegisteredAccount(admin.getAddress());
-
-    // if account not already registered then deploy to pxe
-    if (!isRegistered) {
-      await admin.deploy().wait();
-    }
-
-    setRegistryAdmin(await admin.getWallet());
-  };
-
-  const connectWallet = async (secretKey: Fr) => {
-    setConnecting(true);
-    try {
-      const wallet = await checkAndRegisterAccount(secretKey);
-      setAccount(wallet);
-      localStorage.setItem(
-        ZIMBURSE_WALLET_LS_KEY,
-        wallet.getAddress().toString()
+  const checkAndGetRegistryAdmin =
+    async (): Promise<AccountWalletWithSecretKey> => {
+      const admin = getSchnorrAccount(
+        pxe,
+        Fr.fromHexString(ZIMBURSE_REGISTRY_ADMIN.Fr),
+        Fq.fromHexString(ZIMBURSE_REGISTRY_ADMIN.Fq),
+        0
       );
-    } catch (err) {
-      toast.error('Error connecting wallet!');
-    } finally {
-      setConnecting(false);
-    }
+
+      const isRegistered = await pxe.getRegisteredAccount(admin.getAddress());
+
+      // if account not already registered then deploy to pxe
+      if (!isRegistered) {
+        await admin.deploy().wait();
+      }
+
+      return await admin.getWallet();
+    };
+
+  const connectWallet = async (wallet: AccountWalletWithSecretKey) => {
+    setAccount(wallet);
+    localStorage.setItem(
+      ZIMBURSE_WALLET_LS_KEY,
+      wallet.getAddress().toString()
+    );
   };
 
   const deployContracts = async () => {
@@ -329,7 +310,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     setFetchingTokenBalance(false);
   };
 
-  const loadContractInstances = async () => {
+  const loadContractInstances = async (admin: AccountWalletWithSecretKey) => {
     const storedRegistryAddress = localStorage.getItem(
       ZIMBURSE_REGISTRY_LS_KEY
     );
@@ -339,12 +320,12 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
       try {
         const registry = await ZImburseRegistryContract.at(
           AztecAddress.fromString(storedRegistryAddress),
-          account!
+          admin
         );
 
         const usdc = await TokenContract.at(
           AztecAddress.fromString(storedUsdcAddress),
-          account!
+          admin
         );
 
         setZimburseContracts({ registry, usdc });
@@ -386,39 +367,39 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         await checkForCounterpartyNullifications();
       }
     })();
-  }, [zimburseContracts]);
-
-  useEffect(() => {
-    (async () => {
-      if (!account) return;
-      await loadContractInstances();
-    })();
   }, [account]);
 
   useEffect(() => {
     (async () => {
+      // check if registry admin exists and if not then register to pxe
+      const admin = await checkAndGetRegistryAdmin();
+      await loadContractInstances(admin);
+      setRegistryAdmin(admin);
+
+      // load in wallets
+      const resolvedWallets = [];
+      for (const secretKey of AZTEC_WALLETS) {
+        const wallet = await checkAndRegisterAccount(
+          Fr.fromHexString(secretKey)
+        );
+        resolvedWallets.push(wallet);
+      }
+
       const sessionAddress = localStorage.getItem(ZIMBURSE_WALLET_LS_KEY);
       const acc = sessionAddress
-        ? accounts.find((acc) =>
-            acc.address.equals(AztecAddress.fromString(sessionAddress))
+        ? resolvedWallets.find((wallet: AccountWalletWithSecretKey) =>
+            wallet.getAddress().equals(AztecAddress.fromString(sessionAddress))
           )
         : undefined;
-      if (acc) {
-        await connectWallet(acc.secretKey);
-      }
+      setAccount(acc);
+      setWallets(resolvedWallets);
     })();
-  }, [accounts]);
-
-  useEffect(() => {
-    // check if registry admin exists and if not then register to pxe
-    checkRegistryAdmin();
   }, []);
 
   return (
     <AztecContext.Provider
       value={{
         account,
-        accounts,
         connecting,
         connectWallet,
         disconnectWallet,
@@ -431,6 +412,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         tokenBalance,
         tokenContract: zimburseContracts?.usdc,
         viewOnlyAccount,
+        wallets,
       }}
     >
       {children}

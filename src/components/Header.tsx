@@ -16,13 +16,13 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { AztecAddress, Fr } from '@aztec/circuits.js';
-import { AZTEC_WALLETS, AztecAccount } from '../utils/constants';
+import { AztecAddress } from '@aztec/circuits.js';
+import { AztecAccount } from '../utils/constants';
+import { AccountWalletWithSecretKey } from '@aztec/aztec.js';
 
 export default function Header(): JSX.Element {
   const {
     account,
-    accounts,
     connectWallet,
     connecting,
     deployContracts,
@@ -34,6 +34,7 @@ export default function Header(): JSX.Element {
     setTokenBalance,
     tokenBalance,
     tokenContract,
+    wallets,
   } = useAztec();
   const navigate = useNavigate();
   const menuRef = useRef(null);
@@ -45,10 +46,11 @@ export default function Header(): JSX.Element {
   const MINT_AMOUNT = toUSDCDecimals(10000n);
 
   const availableWallets = useMemo(() => {
-    return accounts.filter(
-      (acc) => !acc.address.equals(account?.getAddress() ?? AztecAddress.ZERO)
+    return wallets.filter(
+      (wallet) =>
+        !wallet.getAddress().equals(account?.getAddress() ?? AztecAddress.ZERO)
     );
-  }, [account, accounts]);
+  }, [account, wallets]);
 
   const copyAddress = async (
     e: React.MouseEvent<SVGSVGElement, MouseEvent>,
@@ -98,7 +100,7 @@ export default function Header(): JSX.Element {
     } else if (account) {
       return truncateAddress(account.getAddress().toString());
     } else {
-      return 'Wallet connect';
+      return 'Connect Wallet';
     }
   }, [account, connecting]);
 
@@ -111,48 +113,46 @@ export default function Header(): JSX.Element {
         src={logo}
       />
       <div className='flex gap-4 items-center'>
-        {account && (
-          <div className='border border-black flex gap-4 items-center rounded px-2 py-1'>
+        <div className='border border-black flex gap-4 items-center rounded px-2 py-1'>
+          <div>
             <div>
+              <div className='flex gap-1 items-center'>
+                <div className='text-xs'>Contracts</div>
+                <ReceiptText size={12} />
+              </div>
+              <button
+                className='bg-yellow-400 flex gap-1 items-center mt-2 px-1 py-0.5 rounded-full text-[10px]'
+                onClick={() => deployContracts()}
+              >
+                {deployButtonText}
+                {deployingContracts ? (
+                  <Loader size={10} />
+                ) : (
+                  <RotateCcw size={10} />
+                )}
+              </button>
+            </div>
+          </div>
+          <div className='mt-2'>
+            <div className='flex gap-4 justify-between text-xs'>
+              <div>Usdc:</div>
               <div>
-                <div className='flex gap-1 items-center'>
-                  <div className='text-xs'>Contracts</div>
-                  <ReceiptText size={12} />
-                </div>
-                <button
-                  className='bg-yellow-400 flex gap-1 items-center mt-2 px-1 py-0.5 rounded-full text-[10px]'
-                  onClick={() => deployContracts()}
-                >
-                  {deployButtonText}
-                  {deployingContracts ? (
-                    <Loader size={10} />
-                  ) : (
-                    <RotateCcw size={10} />
-                  )}
-                </button>
+                {tokenContract
+                  ? truncateAddress(tokenContract.address.toString())
+                  : 'None found'}
               </div>
             </div>
-            <div className='mt-2'>
-              <div className='flex gap-4 justify-between text-xs'>
-                <div>Usdc:</div>
-                <div>
-                  {tokenContract
-                    ? truncateAddress(tokenContract.address.toString())
-                    : 'None found'}
-                </div>
-              </div>
-              <div className='flex gap-4 justify-between text-xs'>
-                <div>Escrow Registry:</div>
-                <div>
-                  {registryContract
-                    ? truncateAddress(registryContract.address.toString())
-                    : 'None found'}
-                </div>
+            <div className='flex gap-4 justify-between text-xs'>
+              <div>Escrow Registry:</div>
+              <div>
+                {registryContract
+                  ? truncateAddress(registryContract.address.toString())
+                  : 'None found'}
               </div>
             </div>
           </div>
-        )}
-        {tokenContract &&
+        </div>
+        {account &&
           (fetchingTokenBalance ? (
             <div className='flex gap-2 items-center mr-8'>
               <div className='text-sm'>Fetching token balances...</div>
@@ -194,9 +194,7 @@ export default function Header(): JSX.Element {
           <button
             className='ml-auto relative'
             onClick={() =>
-              account
-                ? setShowMenu(!showMenu)
-                : connectWallet(Fr.fromHexString(AZTEC_WALLETS[0]))
+              account ? setShowMenu(!showMenu) : connectWallet(wallets[0])
             }
           >
             {walletButtonText}
@@ -205,17 +203,17 @@ export default function Header(): JSX.Element {
                 className='absolute bg-zimburseGray left-0 rounded top-[calc(100%+12px)]'
                 ref={menuRef}
               >
-                {availableWallets.map((wallet: AztecAccount) => (
+                {availableWallets.map((wallet: AccountWalletWithSecretKey) => (
                   <div
                     className='cursor-pointer flex gap-2 items-center justify-between p-4 rounded hover:bg-[#A8A6A6]'
-                    key={wallet.address.toString()}
-                    onClick={() => connectWallet(wallet.secretKey)}
+                    key={wallet.getAddress().toString()}
+                    onClick={() => connectWallet(wallet)}
                   >
-                    <div>{truncateAddress(wallet.address.toString())}</div>
+                    <div>{truncateAddress(wallet.getAddress().toString())}</div>
                     <Copy
                       className='hover:stroke-[#F2F2F2]'
                       color='black'
-                      onClick={(e) => copyAddress(e, wallet.address)}
+                      onClick={(e) => copyAddress(e, wallet.getAddress())}
                       size={18}
                     />
                   </div>
