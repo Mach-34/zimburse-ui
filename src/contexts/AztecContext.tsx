@@ -46,7 +46,6 @@ import usePxeHealth from '../hooks/usePXEHealth';
 
 type AztecContextProps = {
   account: AccountWalletWithSecretKey | undefined;
-  connectingToPXE: boolean;
   connectToPXE: () => void;
   connectWallet: (wallet: AccountWalletWithSecretKey) => Promise<void>;
   deployContracts: () => Promise<void>;
@@ -389,27 +388,27 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     (async () => {
       if (!pxe) return;
       // check if registry admin exists and if not then register to pxe
-      // const admin = await checkAndGetRegistryAdmin();
-      // await loadContractInstances(admin);
-      // setRegistryAdmin(admin);
+      const admin = await checkAndGetRegistryAdmin();
+      await loadContractInstances(admin);
+      setRegistryAdmin(admin);
 
-      // // load in wallets
-      // const resolvedWallets = [];
-      // for (const secretKey of AZTEC_WALLETS) {
-      //   const wallet = await checkAndRegisterAccount(
-      //     Fr.fromHexString(secretKey)
-      //   );
-      //   resolvedWallets.push(wallet);
-      // }
+      // load in wallets
+      const resolvedWallets = [];
+      for (const secretKey of AZTEC_WALLETS) {
+        const wallet = await checkAndRegisterAccount(
+          Fr.fromHexString(secretKey)
+        );
+        resolvedWallets.push(wallet);
+      }
 
-      // const sessionAddress = localStorage.getItem(ZIMBURSE_WALLET_LS_KEY);
-      // const acc = sessionAddress
-      //   ? resolvedWallets.find((wallet: AccountWalletWithSecretKey) =>
-      //       wallet.getAddress().equals(AztecAddress.fromString(sessionAddress))
-      //     )
-      //   : undefined;
-      // setAccount(acc);
-      // setWallets(resolvedWallets);
+      const sessionAddress = localStorage.getItem(ZIMBURSE_WALLET_LS_KEY);
+      const acc = sessionAddress
+        ? resolvedWallets.find((wallet: AccountWalletWithSecretKey) =>
+            wallet.getAddress().equals(AztecAddress.fromString(sessionAddress))
+          )
+        : undefined;
+      setAccount(acc);
+      setWallets(resolvedWallets);
     })();
   }, [pxe]);
 
