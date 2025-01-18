@@ -11,10 +11,13 @@ import {
   AccountWalletWithSecretKey,
   AztecAddress,
   BatchCall,
+  createLogger,
   createPXEClient,
   Fq,
   Fr,
+  PXE,
   UniqueNote,
+  waitForPXE,
 } from '@aztec/aztec.js';
 import {
   AZTEC_WALLETS,
@@ -40,15 +43,19 @@ import { toast } from 'react-toastify';
 import chunk from 'lodash.chunk';
 import { USDC_TOKEN } from '@mach-34/zimburse/dist/src/constants';
 import { getDkimInputs } from '../utils';
+import usePxeHealth from '../hooks/usePXEHealth';
 
 type AztecContextProps = {
   account: AccountWalletWithSecretKey | undefined;
+  connectingToPXE: boolean;
+  connectToPXE: () => void;
   connectWallet: (wallet: AccountWalletWithSecretKey) => Promise<void>;
   deployContracts: () => Promise<void>;
   deployingContracts: boolean;
   disconnectWallet: () => Promise<void>;
   fetchingTokenBalance: boolean;
   loadingContracts: boolean;
+  pxe: PXE | null;
   registryAdmin: AccountWalletWithSecretKey | undefined;
   registryContract: ZImburseRegistryContract | undefined;
   setTokenBalance: Dispatch<SetStateAction<TokenBalance>>;
@@ -59,12 +66,15 @@ type AztecContextProps = {
 
 const DEFAULT_AZTEC_CONTEXT_PROPS = {
   account: undefined,
+  connectToPXE: () => null,
+  connectingToPXE: false,
   connectWallet: async (_wallet: AccountWalletWithSecretKey) => {},
   deployContracts: async () => {},
   deployingContracts: false,
   disconnectWallet: async () => {},
   fetchingTokenBalance: false,
   loadingContracts: false,
+  pxe: null,
   registryAdmin: undefined,
   registryContract: undefined,
   setTokenBalance: (() => {}) as Dispatch<SetStateAction<TokenBalance>>,
@@ -87,16 +97,16 @@ type ZimburseContracts = {
   usdc: TokenContract;
 };
 
-const pxe = createPXEClient(DEFAULT_PXE_URL);
-
 export const AztecProvider = ({ children }: { children: ReactNode }) => {
   const [account, setAccount] = useState<
     AccountWalletWithSecretKey | undefined
   >(undefined);
+  const [connectingToPXE, setConnectingToPXE] = useState<boolean>(false);
   const [deployingContracts, setDeployingContracts] = useState<boolean>(false);
   const [fetchingTokenBalance, setFetchingTokenBalance] =
     useState<boolean>(false);
   const [loadingContracts, setLoadingContracts] = useState<boolean>(true);
+  const [pxe, setPXE] = useState<PXE | null>(null);
   const [registryAdmin, setRegistryAdmin] = useState<
     AccountWalletWithSecretKey | undefined
   >(undefined);
@@ -108,6 +118,11 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
   const [zimburseContracts, setZimburseContracts] = useState<
     ZimburseContracts | undefined
   >(undefined);
+
+  // monitor PXE connection
+  usePxeHealth(pxe, () => {
+    setPXE(null);
+  });
 
   const checkForCounterpartyNullifications = async () => {
     // @ts-ignore
@@ -222,6 +237,15 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
 
       return await admin.getWallet();
     };
+
+  const connectToPXE = async () => {
+    setConnectingToPXE(true);
+    const client = createPXEClient(DEFAULT_PXE_URL);
+    createLogger;
+    await waitForPXE(client);
+    setPXE(client);
+    setConnectingToPXE(false);
+  };
 
   const connectWallet = async (wallet: AccountWalletWithSecretKey) => {
     setAccount(wallet);
@@ -364,41 +388,49 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     (async () => {
+      if (!pxe) return;
       // check if registry admin exists and if not then register to pxe
-      const admin = await checkAndGetRegistryAdmin();
-      await loadContractInstances(admin);
-      setRegistryAdmin(admin);
+      // const admin = await checkAndGetRegistryAdmin();
+      // await loadContractInstances(admin);
+      // setRegistryAdmin(admin);
 
-      // load in wallets
-      const resolvedWallets = [];
-      for (const secretKey of AZTEC_WALLETS) {
-        const wallet = await checkAndRegisterAccount(
-          Fr.fromHexString(secretKey)
-        );
-        resolvedWallets.push(wallet);
-      }
+      // // load in wallets
+      // const resolvedWallets = [];
+      // for (const secretKey of AZTEC_WALLETS) {
+      //   const wallet = await checkAndRegisterAccount(
+      //     Fr.fromHexString(secretKey)
+      //   );
+      //   resolvedWallets.push(wallet);
+      // }
 
-      const sessionAddress = localStorage.getItem(ZIMBURSE_WALLET_LS_KEY);
-      const acc = sessionAddress
-        ? resolvedWallets.find((wallet: AccountWalletWithSecretKey) =>
-            wallet.getAddress().equals(AztecAddress.fromString(sessionAddress))
-          )
-        : undefined;
-      setAccount(acc);
-      setWallets(resolvedWallets);
+      // const sessionAddress = localStorage.getItem(ZIMBURSE_WALLET_LS_KEY);
+      // const acc = sessionAddress
+      //   ? resolvedWallets.find((wallet: AccountWalletWithSecretKey) =>
+      //       wallet.getAddress().equals(AztecAddress.fromString(sessionAddress))
+      //     )
+      //   : undefined;
+      // setAccount(acc);
+      // setWallets(resolvedWallets);
     })();
+  }, [pxe]);
+
+  useEffect(() => {
+    connectToPXE();
   }, []);
 
   return (
     <AztecContext.Provider
       value={{
         account,
+        connectToPXE,
+        connectingToPXE,
         connectWallet,
         disconnectWallet,
         deployContracts,
         deployingContracts,
         fetchingTokenBalance,
         loadingContracts,
+        pxe,
         registryAdmin,
         registryContract: zimburseContracts?.registry,
         setTokenBalance,

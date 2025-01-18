@@ -1,12 +1,12 @@
 import { useMemo, useRef, useState } from 'react';
-import { useAztec } from '../contexts/AztecContext';
-import { formatUSDC, truncateAddress } from '../utils';
-import useOutsideAlerter from '../hooks/useOutsideAlerter';
-import Loader from './Loader';
+import { useAztec } from '../../contexts/AztecContext';
+import { formatUSDC, truncateAddress } from '../../utils';
+import useOutsideAlerter from '../../hooks/useOutsideAlerter';
+import Loader from '../Loader';
 import { toast } from 'react-toastify';
-import { toUSDCDecimals } from '../utils';
-import logo from '../assets/logo.png';
-import usdc from '../assets/usdc.png';
+import { toUSDCDecimals } from '../../utils';
+import logo from '../../assets/logo.png';
+import usdc from '../../assets/usdc.png';
 import {
   Copy,
   Lock,
@@ -18,6 +18,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { AztecAddress } from '@aztec/circuits.js';
 import { AccountWalletWithSecretKey } from '@aztec/aztec.js';
+import PXEBadge from './components/PXEBadge';
 
 export default function Header(): JSX.Element {
   const {
@@ -112,6 +113,7 @@ export default function Header(): JSX.Element {
         src={logo}
       />
       <div className='flex gap-4 items-center'>
+        <PXEBadge />
         {loadingContracts ? (
           <div className='flex gap-2 items-center mr-8'>
             <div className='text-sm'>Loading contracts...</div>
