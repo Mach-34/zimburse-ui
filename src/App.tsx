@@ -3,7 +3,6 @@ import LandingView from './views/Landing';
 import ReimbursementsView from './views/Reimbursements';
 import ReimbursementAdminView from './views/AdminEscrow/ReimbursementAdminView';
 import ReimbursementManagementView from './views/ReimbursementManagement';
-import { useAztec } from './contexts/AztecContext';
 import Modal from 'react-modal';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -11,14 +10,13 @@ import ProtectedRoute from './components/ProtectedRoute';
 Modal.setAppElement('#root');
 
 function App() {
-  const { account } = useAztec();
   const router = createBrowserRouter([
     {
       path: '/',
       element: <LandingView />,
     },
     {
-      element: <ProtectedRoute account={account} />,
+      element: <ProtectedRoute />,
       children: [
         {
           path: '/reimbursements',

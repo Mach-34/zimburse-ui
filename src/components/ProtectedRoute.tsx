@@ -1,11 +1,8 @@
-import { AccountWalletWithSecretKey } from '@aztec/aztec.js';
 import { Navigate, Outlet } from 'react-router-dom';
+import { useAztec } from '../contexts/AztecContext';
 
-type ProtectedRouteProps = {
-  account: AccountWalletWithSecretKey | undefined;
-};
-
-const ProtectedRoute = ({ account }: ProtectedRouteProps) => {
+const ProtectedRoute = () => {
+  const { account } = useAztec();
   if (!account) {
     // Redirect to the root route if no account
     return <Navigate to='/' replace />;

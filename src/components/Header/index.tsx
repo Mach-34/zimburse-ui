@@ -84,17 +84,21 @@ export default function Header(): JSX.Element {
                       <div
                         className='cursor-pointer flex gap-2 items-center justify-between p-4 rounded hover:bg-[#A8A6A6]'
                         key={wallet.getAddress().toString()}
-                        onClick={() => connectWallet(wallet)}
+                        onClick={() => {
+                          connectWallet(wallet);
+                          navigate('/');
+                        }}
                       >
                         <div>
                           {truncateAddress(wallet.getAddress().toString())}
                         </div>
-                        <Copy
-                          className='hover:stroke-[#F2F2F2]'
-                          color='black'
-                          onClick={(e) => copyAddress(e, wallet.getAddress())}
-                          size={18}
-                        />
+                        <button className='bg-zimburseBlue p-1 rounded'>
+                          <Copy
+                            color='white'
+                            onClick={(e) => copyAddress(e, wallet.getAddress())}
+                            size={14}
+                          />
+                        </button>
                       </div>
                     )
                   )}
