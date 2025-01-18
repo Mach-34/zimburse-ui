@@ -11,7 +11,6 @@ import {
   AccountWalletWithSecretKey,
   AztecAddress,
   BatchCall,
-  createLogger,
   createPXEClient,
   Fq,
   Fr,
@@ -61,13 +60,13 @@ type AztecContextProps = {
   setTokenBalance: Dispatch<SetStateAction<TokenBalance>>;
   tokenBalance: TokenBalance;
   tokenContract: TokenContract | undefined;
+  waitingForPXE: boolean;
   wallets: AccountWalletWithSecretKey[];
 };
 
 const DEFAULT_AZTEC_CONTEXT_PROPS = {
   account: undefined,
   connectToPXE: () => null,
-  connectingToPXE: false,
   connectWallet: async (_wallet: AccountWalletWithSecretKey) => {},
   deployContracts: async () => {},
   deployingContracts: false,
@@ -80,6 +79,7 @@ const DEFAULT_AZTEC_CONTEXT_PROPS = {
   setTokenBalance: (() => {}) as Dispatch<SetStateAction<TokenBalance>>,
   tokenBalance: { private: 0n, public: 0n },
   tokenContract: undefined,
+  waitingForPXE: false,
   wallets: [],
 };
 
@@ -101,7 +101,6 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
   const [account, setAccount] = useState<
     AccountWalletWithSecretKey | undefined
   >(undefined);
-  const [connectingToPXE, setConnectingToPXE] = useState<boolean>(false);
   const [deployingContracts, setDeployingContracts] = useState<boolean>(false);
   const [fetchingTokenBalance, setFetchingTokenBalance] =
     useState<boolean>(false);
@@ -114,6 +113,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     private: 0n,
     public: 0n,
   });
+  const [waitingForPXE, setWaitingForPXE] = useState<boolean>(false);
   const [wallets, setWallets] = useState<AccountWalletWithSecretKey[]>([]);
   const [zimburseContracts, setZimburseContracts] = useState<
     ZimburseContracts | undefined
@@ -239,12 +239,11 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     };
 
   const connectToPXE = async () => {
-    setConnectingToPXE(true);
+    setWaitingForPXE(true);
     const client = createPXEClient(DEFAULT_PXE_URL);
-    createLogger;
     await waitForPXE(client);
     setPXE(client);
-    setConnectingToPXE(false);
+    setWaitingForPXE(false);
   };
 
   const connectWallet = async (wallet: AccountWalletWithSecretKey) => {
@@ -423,7 +422,6 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
       value={{
         account,
         connectToPXE,
-        connectingToPXE,
         connectWallet,
         disconnectWallet,
         deployContracts,
@@ -436,6 +434,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         setTokenBalance,
         tokenBalance,
         tokenContract: zimburseContracts?.usdc,
+        waitingForPXE,
         wallets,
       }}
     >
