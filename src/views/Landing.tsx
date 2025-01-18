@@ -5,10 +5,12 @@ import { useAztec } from '../contexts/AztecContext';
 import { useMemo } from 'react';
 
 export default function LandingView(): JSX.Element {
-  const { account, registryContract, tokenContract } = useAztec();
+  const { account, pxe, registryContract, tokenContract } = useAztec();
 
   const actionText = useMemo(() => {
-    if (!account) {
+    if (!pxe) {
+      return 'PXE must be running';
+    } else if (!account) {
       return 'Please connect a wallet';
     } else if (!registryContract && !tokenContract) {
       return 'No Z-Imburse contracts found. Please redeploy.';
@@ -19,7 +21,7 @@ export default function LandingView(): JSX.Element {
     } else {
       return '';
     }
-  }, [account, registryContract, tokenContract]);
+  }, [account, pxe, registryContract, tokenContract]);
 
   return (
     <AppLayout>

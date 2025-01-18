@@ -120,6 +120,9 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
 
   // monitor PXE connection
   usePxeHealth(pxe, () => {
+    setAccount(undefined);
+    setRegistryAdmin(undefined);
+    setWallets([]);
     setPXE(null);
   });
 

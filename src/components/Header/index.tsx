@@ -14,7 +14,7 @@ import TokenBalanceSection from './components/TokenBalanceSection';
 import Loader from '../Loader';
 
 export default function Header(): JSX.Element {
-  const { account, connectWallet, disconnectWallet, wallets } = useAztec();
+  const { account, connectWallet, disconnectWallet, pxe, wallets } = useAztec();
   const navigate = useNavigate();
   const menuRef = useRef(null);
   const [showMenu, setShowMenu] = useState<boolean>(false);
@@ -63,45 +63,52 @@ export default function Header(): JSX.Element {
         <PXEBadge />
         <ContractSection />
         <TokenBalanceSection />
-        <div>
-          <button
-            className='flex gap-2 items-center ml-auto relative'
-            onClick={() =>
-              account ? setShowMenu(!showMenu) : connectWallet(wallets[0])
-            }
-          >
-            {walletButtonText}
-            {!wallets.length && <Loader size={16} />}
-            {!!account && showMenu && (
-              <div
-                className='absolute bg-zimburseGray left-0 rounded top-[calc(100%+12px)]'
-                ref={menuRef}
-              >
-                {availableWallets.map((wallet: AccountWalletWithSecretKey) => (
-                  <div
-                    className='cursor-pointer flex gap-2 items-center justify-between p-4 rounded hover:bg-[#A8A6A6]'
-                    key={wallet.getAddress().toString()}
-                    onClick={() => connectWallet(wallet)}
-                  >
-                    <div>{truncateAddress(wallet.getAddress().toString())}</div>
-                    <Copy
-                      className='hover:stroke-[#F2F2F2]'
-                      color='black'
-                      onClick={(e) => copyAddress(e, wallet.getAddress())}
-                      size={18}
-                    />
-                  </div>
-                ))}
+        {pxe && (
+          <div>
+            <button
+              className='flex gap-2 items-center ml-auto relative'
+              disabled={!wallets.length}
+              onClick={() =>
+                account ? setShowMenu(!showMenu) : connectWallet(wallets[0])
+              }
+            >
+              {walletButtonText}
+              {!wallets.length && <Loader size={16} />}
+              {!!account && showMenu && (
                 <div
-                  className='cursor-pointer p-4 rounded hover:bg-[#A8A6A6]'
-                  onClick={() => disconnectWallet()}
+                  className='absolute bg-zimburseGray left-0 rounded top-[calc(100%+12px)]'
+                  ref={menuRef}
                 >
-                  Logout
+                  {availableWallets.map(
+                    (wallet: AccountWalletWithSecretKey) => (
+                      <div
+                        className='cursor-pointer flex gap-2 items-center justify-between p-4 rounded hover:bg-[#A8A6A6]'
+                        key={wallet.getAddress().toString()}
+                        onClick={() => connectWallet(wallet)}
+                      >
+                        <div>
+                          {truncateAddress(wallet.getAddress().toString())}
+                        </div>
+                        <Copy
+                          className='hover:stroke-[#F2F2F2]'
+                          color='black'
+                          onClick={(e) => copyAddress(e, wallet.getAddress())}
+                          size={18}
+                        />
+                      </div>
+                    )
+                  )}
+                  <div
+                    className='cursor-pointer p-4 rounded hover:bg-[#A8A6A6]'
+                    onClick={() => disconnectWallet()}
+                  >
+                    Logout
+                  </div>
                 </div>
-              </div>
-            )}
-          </button>
-        </div>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
