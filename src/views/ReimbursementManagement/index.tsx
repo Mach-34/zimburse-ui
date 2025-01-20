@@ -9,7 +9,7 @@ import AppLayout from '../../layouts/AppLayout';
 import { toast } from 'react-toastify';
 import { useAztec } from '../../contexts/AztecContext';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AztecAddress } from '@aztec/circuits.js';
+import { AztecAddress } from '@aztec/aztec.js';
 import {
   formatUSDC,
   fromU128,

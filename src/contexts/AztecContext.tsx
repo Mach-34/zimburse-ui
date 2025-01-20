@@ -35,9 +35,9 @@ import {
   ZImburseRegistryContract,
 } from '../artifacts';
 import {
-  computeContractClassId,
+  // computeContractClassId,
   deriveSigningKey,
-  getContractClassFromArtifact,
+  // getContractClassFromArtifact,
 } from '@aztec/circuits.js';
 import { toast } from 'react-toastify';
 import chunk from 'lodash.chunk';
@@ -282,9 +282,13 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
       const dkimKeys = getDkimInputs();
 
       // calculate contract class ID
-      const artifact = ZImburseEscrowContract.artifact;
-      const contractClass = getContractClassFromArtifact(artifact);
-      const escrowClassId = computeContractClassId(contractClass);
+      // const artifact = ZImburseEscrowContract.artifact;
+      // const contractClass = getContractClassFromArtifact(artifact);
+      // const escrowClassId = computeContractClassId(contractClass);
+      // TODO: Bug with circuit.js 0.67.0 preventing us from building vite app. Hardcode class ID for now
+      const escrowClassId = Fr.fromHexString(
+        '0x08ba4c31dfb0958592c2264517a41a5d520a030c750dd11c71362e034ae1661c'
+      );
 
       const registry = await ZImburseRegistryContract.deploy(
         registryAdmin,
@@ -389,13 +393,14 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     (async () => {
-      if (zimburseContracts) {
+      if (account && zimburseContracts) {
         await fetchTokenBalances(zimburseContracts.usdc);
         // check for events to nullify
         await checkForCounterpartyNullifications();
       }
     })();
   }, [
+    account,
     checkForCounterpartyNullifications,
     fetchTokenBalances,
     zimburseContracts,

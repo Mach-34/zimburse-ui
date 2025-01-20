@@ -6,7 +6,7 @@ import AppLayout from '../../layouts/AppLayout';
 import { ZImburseEscrowContract } from '../../artifacts';
 import { useAztec } from '../../contexts/AztecContext';
 import { toast } from 'react-toastify';
-import { AztecAddress } from '@aztec/circuits.js';
+import { AztecAddress } from '@aztec/aztec.js';
 import Loader from '../../components/Loader';
 import { formatUSDC, fromU128 } from '../../utils';
 import { EVENT_BLOCK_LIMIT } from '../../utils/constants';

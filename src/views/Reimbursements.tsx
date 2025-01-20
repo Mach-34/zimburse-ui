@@ -4,7 +4,6 @@ import { Upload } from 'lucide-react';
 import AppLayout from '../layouts/AppLayout';
 import FileInput from '../components/FileInput';
 import { ZImburseEscrowContract } from '../artifacts';
-import { AztecAddress } from '@aztec/circuits.js';
 import { useAztec } from '../contexts/AztecContext';
 import Loader from '../components/Loader';
 import { ENTITLEMENT_TITLES } from '../utils/constants';
@@ -17,7 +16,7 @@ import {
   toContractFriendly,
 } from '@mach-34/zimburse/dist/src/email_inputs/united';
 import { toast } from 'react-toastify';
-import { Fr, TxHash } from '@aztec/aztec.js';
+import { AztecAddress, Fr, TxHash } from '@aztec/aztec.js';
 import { formatUSDC, fromU128 } from '../utils';
 import moment from 'moment';
 import {

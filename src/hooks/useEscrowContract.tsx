@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ZImburseEscrowContract } from '../artifacts';
 import { useAztec } from '../contexts/AztecContext';
-import { AztecAddress } from '@aztec/circuits.js';
+import { AztecAddress } from '@aztec/aztec.js';
 
 export default function useEscrowContract(address: string) {
   const { account } = useAztec();

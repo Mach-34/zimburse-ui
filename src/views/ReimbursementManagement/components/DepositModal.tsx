@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 import Modal, { ModalProps } from '../../../components/Modal';
 import { Dispatch, SetStateAction, useMemo, useState } from 'react';
 import { useAztec } from '../../../contexts/AztecContext';
-import { AztecAddress } from '@aztec/circuits.js';
+import { AztecAddress } from '@aztec/aztec.js';
 import { toast } from 'react-toastify';
 import Loader from '../../../components/Loader';
 import { EscrowData } from '..';
