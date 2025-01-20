@@ -77,6 +77,7 @@ export default function ReimbursementAdminView(): JSX.Element {
       const spotPromise = escrowContract.methods
         .view_entitlements(
           0,
+          // @ts-ignore
           account.getAddress(),
           { _is_some: false, _value: AztecAddress.ZERO },
           { _is_some: false, _value: 0 },
@@ -88,6 +89,7 @@ export default function ReimbursementAdminView(): JSX.Element {
       const recurringPromise = escrowContract.methods
         .view_entitlements(
           0,
+          // @ts-ignore
           account.getAddress(),
           { _is_some: false, _value: AztecAddress.ZERO },
           { _is_some: false, _value: 0 },
@@ -153,7 +155,9 @@ export default function ReimbursementAdminView(): JSX.Element {
       if (!tokenContract) return;
 
       const escrowContract = await ZImburseEscrowContract.at(
+        // @ts-ignore
         escrowAddress,
+        // @ts-ignore
         account
       );
 

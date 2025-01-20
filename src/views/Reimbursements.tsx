@@ -374,7 +374,9 @@ export default function ReimbursementsView(): JSX.Element {
                           accept='.eml'
                           Icon={Upload}
                           id='Entitlement Claim'
-                          onUpload={(e) => uploadEmail(e.target.files[0])}
+                          onUpload={(e) =>
+                            e.target.files && uploadEmail(e.target.files[0])
+                          }
                           style={{ marginTop: '32px', width: '100%' }}
                           text='Upload .eml'
                         />

@@ -128,6 +128,7 @@ export default function ReimbursementManagementView(): JSX.Element {
       const spotPromise = await escrowContract.methods
         .view_entitlements(
           0,
+          // @ts-ignore
           account.getAddress(),
           { _is_some: false, _value: AztecAddress.ZERO },
           { _is_some: false, _value: 0 },
@@ -139,6 +140,7 @@ export default function ReimbursementManagementView(): JSX.Element {
       const recurringPromise = await escrowContract.methods
         .view_entitlements(
           0,
+          // @ts-ignore
           account.getAddress(),
           { _is_some: false, _value: AztecAddress.ZERO },
           { _is_some: false, _value: 0 },
@@ -161,10 +163,12 @@ export default function ReimbursementManagementView(): JSX.Element {
 
     const balancePromise = tokenContract!
       .withWallet(account!)
+      // @ts-ignore
       .methods.balance_of_public(escrowContract.address)
       .simulate();
 
     const participantsPromise = registryContract!
+      // @ts-ignore
       .withWallet(registryAdmin)
       .methods.get_participants(escrowContract!.address, 0)
       .simulate();

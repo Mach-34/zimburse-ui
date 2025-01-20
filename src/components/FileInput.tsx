@@ -5,7 +5,7 @@ type FileInputProps = {
   accept: string;
   Icon?: LucideIcon;
   id: string;
-  onUpload: (e: ChangeEventHandler<HTMLInputElement>) => void;
+  onUpload: ChangeEventHandler<HTMLInputElement>;
   style?: CSSProperties;
   text: string;
 };

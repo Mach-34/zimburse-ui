@@ -134,7 +134,9 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
       const escrowContracts = await Promise.all(
         Object.keys(escrowNoteObj).map(async (address: string) => {
           return await ZImburseEscrowContract.at(
+            // @ts-ignore
             AztecAddress.fromString(address),
+            // @ts-ignore
             account
           );
         })
@@ -206,14 +208,16 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     async (secretKey: Fr): Promise<AccountWalletWithSecretKey> => {
       // load schnorr account
       const schnorr = getSchnorrAccount(
-        pxe,
+        pxe!,
         secretKey,
         deriveSigningKey(secretKey),
         0
       );
 
       // check if account is already registerd on pxe
-      const isRegistered = await pxe.getRegisteredAccount(schnorr.getAddress());
+      const isRegistered = await pxe!.getRegisteredAccount(
+        schnorr.getAddress()
+      );
 
       // if account not already registered then deploy to pxe
       if (!isRegistered) {
@@ -228,13 +232,13 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
   const checkAndGetRegistryAdmin =
     useCallback(async (): Promise<AccountWalletWithSecretKey> => {
       const admin = getSchnorrAccount(
-        pxe,
+        pxe!,
         Fr.fromHexString(ZIMBURSE_REGISTRY_ADMIN.Fr),
         Fq.fromHexString(ZIMBURSE_REGISTRY_ADMIN.Fq),
         0
       );
 
-      const isRegistered = await pxe.getRegisteredAccount(admin.getAddress());
+      const isRegistered = await pxe!.getRegisteredAccount(admin.getAddress());
 
       // if account not already registered then deploy to pxe
       if (!isRegistered) {

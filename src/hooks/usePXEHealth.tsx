@@ -21,6 +21,7 @@ export default function usePxeHealth(
 
     if (pxe) {
       // Set up a new interval
+      // @ts-ignore
       intervalIdRef.current = setInterval(async () => {
         if (isProcessingRef.current) return;
 
