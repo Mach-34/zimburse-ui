@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import google from '../assets/google.svg';
 import { Upload } from 'lucide-react';
 import AppLayout from '../layouts/AppLayout';
@@ -55,7 +55,7 @@ type UploadedFile = {
  * @param data - the data to break into capsules
  * @returns the capsules in order to insert
  */
-export function breakIntoCapsules(data: number[], chunkSize?: number): Fr[][] {
+const breakIntoCapsules = (data: number[], chunkSize?: number): Fr[][] => {
   if (!chunkSize) chunkSize = MAX_CHUNK_SIZE;
   // pad to maxLength
   const chunks: Fr[][] = [];
@@ -69,7 +69,7 @@ export function breakIntoCapsules(data: number[], chunkSize?: number): Fr[][] {
     chunks.push(chunk.map((x) => new Fr(x)));
   }
   return chunks.reverse();
-}
+};
 
 export default function ReimbursementsView(): JSX.Element {
   const { account, registryContract, setTokenBalance, tokenContract } =
@@ -82,7 +82,7 @@ export default function ReimbursementsView(): JSX.Element {
     useState<boolean>(false);
   const [selectedEntitlement, setSelectedEntitlement] = useState<number>(-1);
 
-  const fetchEscrows = async () => {
+  const fetchEscrows = useCallback(async () => {
     if (!account || !registryContract) return;
 
     const formattedEntitlements = [];
@@ -136,7 +136,7 @@ export default function ReimbursementsView(): JSX.Element {
       setEntitlements(formattedEntitlements);
     }
     setFetchingEscrows(false);
-  };
+  }, [account, registryContract]);
 
   const claimLinode = async (
     escrow: ZImburseEscrowContract,
@@ -204,11 +204,10 @@ export default function ReimbursementsView(): JSX.Element {
         account
       );
 
-      let txHash = TxHash.ZERO;
       if (verifier === 2) {
-        txHash = await claimLinode(escrowContract, spot);
+        await claimLinode(escrowContract, spot);
       } else {
-        txHash = await claimUnited(escrowContract);
+        await claimUnited(escrowContract);
       }
 
       const amount = email.data.amount;
@@ -252,7 +251,7 @@ export default function ReimbursementsView(): JSX.Element {
     (async () => {
       await fetchEscrows();
     })();
-  }, [registryContract]);
+  }, [fetchEscrows, registryContract]);
 
   return (
     <AppLayout>
@@ -262,7 +261,7 @@ export default function ReimbursementsView(): JSX.Element {
           <div className='text-2xl'>Fetching escrows</div>
           <Loader size={24} />
         </div>
-      ) : !!entitlements.length ? (
+      ) : entitlements.length > 0 ? (
         <>
           <div className='flex flex-1 gap-16 min-h-0 mt-16 w-full'>
             <div className='flex flex-col w-[25%]'>

@@ -3,11 +3,10 @@ import Modal, { ModalProps } from '../../../components/Modal';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Loader from '../../../components/Loader';
 import Select from '../../../components/Select';
-import { NUMBER_INPUT_REGEX } from '../../../utils/constants';
+import { NUMBER_INPUT_REGEX, VERIFIERS } from '../../../utils/constants';
 import Calendar from 'react-calendar';
 import useOutsideAlerter from '../../../hooks/useOutsideAlerter';
 import moment from 'moment';
-import { VERIFIERS } from '..';
 
 type AddEntitlementModalProps = {
   loading: boolean;

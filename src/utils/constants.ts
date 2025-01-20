@@ -17,6 +17,8 @@ export const ENTITLEMENT_TITLES: { [key: number]: string } = {
 
 export const NUMBER_INPUT_REGEX = /^\d*\.?\d{0,6}$/;
 
+export const VERIFIERS: { [key: string]: number } = { Linode: 2, United: 5 };
+
 export const ZIMBURSE_REGISTRY_ADMIN = {
     Fq: "0x082e6d118b06b9fb3bf5bcaa5328f6f742c86dad8df04d5601c3508c827d3c38",
     Fr: "0x06ef861b5853f12549a8d7e3e67083ae680123dcbb12cedb6d3060075f9d0b3c"

@@ -27,7 +27,7 @@ export default function usePxeHealth(
         isProcessingRef.current = true;
         try {
           await pxe.getPXEInfo();
-        } catch (err) {
+        } catch {
           onPXEConnectionLost();
           toast.error(`Lost connection to PXE at ${DEFAULT_PXE_URL}`);
         } finally {
@@ -41,5 +41,5 @@ export default function usePxeHealth(
     return () => {
       clearExistingInterval();
     };
-  }, [pxe]);
+  }, [onPXEConnectionLost, pxe]);
 }
