@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AddGroupModal from './components/AddGroupModal';
@@ -71,64 +71,63 @@ export default function ReimbursementAdminView(): JSX.Element {
     }
   };
 
-  const getActiveEntitlements = async (
-    escrowContract: ZImburseEscrowContract
-  ) => {
-    // fetch spot entitlements
-    const spotPromise = escrowContract.methods
-      .view_entitlements(
-        0,
-        account.getAddress(),
-        { _is_some: false, _value: AztecAddress.ZERO },
-        { _is_some: false, _value: 0 },
-        { _is_some: true, _value: true }
-      )
-      .simulate();
+  const getActiveEntitlements = useCallback(
+    async (escrowContract: ZImburseEscrowContract) => {
+      // fetch spot entitlements
+      const spotPromise = escrowContract.methods
+        .view_entitlements(
+          0,
+          account.getAddress(),
+          { _is_some: false, _value: AztecAddress.ZERO },
+          { _is_some: false, _value: 0 },
+          { _is_some: true, _value: true }
+        )
+        .simulate();
 
-    // fetch recurring entitlement
-    const recurringPromise = escrowContract.methods
-      .view_entitlements(
-        0,
-        account.getAddress(),
-        { _is_some: false, _value: AztecAddress.ZERO },
-        { _is_some: false, _value: 0 },
-        { _is_some: true, _value: false }
-      )
-      .simulate();
+      // fetch recurring entitlement
+      const recurringPromise = escrowContract.methods
+        .view_entitlements(
+          0,
+          account.getAddress(),
+          { _is_some: false, _value: AztecAddress.ZERO },
+          { _is_some: false, _value: 0 },
+          { _is_some: true, _value: false }
+        )
+        .simulate();
 
-    const [recurringEntitlements, spotEntitlements] = await Promise.all([
-      recurringPromise,
-      spotPromise,
-    ]);
+      const [recurringEntitlements, spotEntitlements] = await Promise.all([
+        recurringPromise,
+        spotPromise,
+      ]);
 
-    const recurringTotal = recurringEntitlements[0].storage.reduce(
-      (acc: bigint, { max_value }: any) => {
-        return (acc += fromU128(max_value));
-      },
-      0n
-    );
-    const spotTotal = spotEntitlements[0].storage.reduce(
-      (acc: bigint, { max_value }: any) => {
-        return (acc += fromU128(max_value));
-      },
-      0n
-    );
+      const recurringTotal = recurringEntitlements[0].storage.reduce(
+        (acc: bigint, { max_value }: any) => {
+          return (acc += fromU128(max_value));
+        },
+        0n
+      );
+      const spotTotal = spotEntitlements[0].storage.reduce(
+        (acc: bigint, { max_value }: any) => {
+          return (acc += fromU128(max_value));
+        },
+        0n
+      );
 
-    return { recurringTotal, spotTotal };
-  };
+      return { recurringTotal, spotTotal };
+    },
+    [account]
+  );
 
-  const getReimbursed = async (): Promise<bigint> => {
+  const getReimbursed = useCallback(async (): Promise<bigint> => {
     const { RecurringReimbursementClaimed, SpotReimbursementClaimed } =
       ZImburseEscrowContract.events;
 
-    // @ts-ignore
     const recurringReimbursementPromise = account!.getEncryptedEvents(
       RecurringReimbursementClaimed,
       1,
       EVENT_BLOCK_LIMIT
     );
 
-    // @ts-ignore
     const spotReimbursementPromise = account!.getEncryptedEvents(
       SpotReimbursementClaimed,
       1,
@@ -147,51 +146,52 @@ export default function ReimbursementAdminView(): JSX.Element {
     return claimAmounts.reduce((acc: bigint, amt: bigint) => {
       return (acc += amt);
     }, 0n);
-  };
+  }, [account]);
 
-  const fetchEscrowData = async (
-    escrowAddress: AztecAddress
-  ): Promise<EscrowGroup | undefined> => {
-    if (!tokenContract) return;
+  const fetchEscrowData = useCallback(
+    async (escrowAddress: AztecAddress): Promise<EscrowGroup | undefined> => {
+      if (!tokenContract) return;
 
-    const escrowContract = await ZImburseEscrowContract.at(
-      escrowAddress,
-      account
-    );
+      const escrowContract = await ZImburseEscrowContract.at(
+        escrowAddress,
+        account
+      );
 
-    // get escrow title
-    const titlePromise = escrowContract.methods.get_title().simulate();
+      // get escrow title
+      const titlePromise = escrowContract.methods.get_title().simulate();
 
-    // fetch escrow USDC balance
-    const balancePromise = tokenContract.methods
-      .balance_of_public(escrowAddress)
-      .simulate();
+      // fetch escrow USDC balance
+      const balancePromise = tokenContract.methods
+        .balance_of_public(escrowAddress)
+        .simulate();
 
-    // wait for all promises to resolve
-    const [titleBytes, balance, totalReimbursed, activeEntitlements] =
-      await Promise.all([
-        titlePromise,
-        balancePromise,
-        getReimbursed(),
-        getActiveEntitlements(escrowContract),
-      ]);
+      // wait for all promises to resolve
+      const [titleBytes, balance, totalReimbursed, activeEntitlements] =
+        await Promise.all([
+          titlePromise,
+          balancePromise,
+          getReimbursed(),
+          getActiveEntitlements(escrowContract),
+        ]);
 
-    // transform data
-    const title = Buffer.from(new Uint8Array(titleBytes.map(Number))).toString(
-      'utf8'
-    );
+      // transform data
+      const title = Buffer.from(
+        new Uint8Array(titleBytes.map(Number))
+      ).toString('utf8');
 
-    return {
-      activeRecurring: activeEntitlements.recurringTotal,
-      activeSpot: activeEntitlements.spotTotal,
-      escrowed: balance,
-      id: escrowAddress.toString(),
-      title,
-      totalReimbursed,
-    };
-  };
+      return {
+        activeRecurring: activeEntitlements.recurringTotal,
+        activeSpot: activeEntitlements.spotTotal,
+        escrowed: balance,
+        id: escrowAddress.toString(),
+        title,
+        totalReimbursed,
+      };
+    },
+    [account, getActiveEntitlements, getReimbursed, tokenContract]
+  );
 
-  const fetchEscrowGroups = async () => {
+  const fetchEscrowGroups = useCallback(async () => {
     if (!account || !registryContract) return;
     try {
       const escrows: Array<Promise<EscrowGroup | undefined>> = [];
@@ -215,13 +215,13 @@ export default function ReimbursementAdminView(): JSX.Element {
     } catch (err) {
       console.log('Error: ', err);
     }
-  };
+  }, [account, fetchEscrowData, registryContract]);
 
   useEffect(() => {
     (async () => {
       await fetchEscrowGroups();
     })();
-  }, [account, registryContract]);
+  }, [account, fetchEscrowGroups, registryContract]);
 
   return (
     <AppLayout>

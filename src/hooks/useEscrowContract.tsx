@@ -16,7 +16,7 @@ export default function useEscrowContract(address: string) {
       );
       setContract(escrow);
     })();
-  }, [account]);
+  }, [account, address]);
 
   return contract;
 }

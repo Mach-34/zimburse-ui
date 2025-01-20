@@ -6,6 +6,7 @@ import {
   useState,
   ReactNode,
   useEffect,
+  useCallback,
 } from 'react';
 import {
   AccountWalletWithSecretKey,
@@ -66,7 +67,7 @@ type AztecContextProps = {
 const DEFAULT_AZTEC_CONTEXT_PROPS = {
   account: undefined,
   connectToPXE: () => null,
-  connectWallet: async (_wallet: AccountWalletWithSecretKey) => {},
+  connectWallet: async () => {},
   deployContracts: async () => {},
   deployingContracts: false,
   disconnectWallet: async () => {},
@@ -126,8 +127,44 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     setPXE(null);
   });
 
-  const checkForCounterpartyNullifications = async () => {
-    // @ts-ignore
+  const nullifyNotes = useCallback(
+    async (escrowNoteObj: any) => {
+      const NULLIFY_CHUNK_SIZE = 10;
+      // load escrow contract instances
+      const escrowContracts = await Promise.all(
+        Object.keys(escrowNoteObj).map(async (address: string) => {
+          return await ZImburseEscrowContract.at(
+            AztecAddress.fromString(address),
+            account
+          );
+        })
+      );
+
+      // create transaction requests
+      const txRequests = escrowContracts.map((contract) => {
+        const requests = [];
+        const entropyVals = escrowNoteObj[contract.address.toString()];
+        // nullify entitlements can only nullify 10 notes at a time currently
+        for (let i = 0; i < entropyVals.length; i += NULLIFY_CHUNK_SIZE) {
+          const slice = entropyVals.slice(i, i + NULLIFY_CHUNK_SIZE);
+          // make sure array size is 10
+          slice.push(...new Array(10 - slice.length).fill(0));
+          requests.push(contract.methods.nullify_entitlements(slice).request());
+        }
+        return requests;
+      });
+
+      // flatten requests and batch call
+      await Promise.all(
+        chunk(txRequests.flat(), 4).map((batch) =>
+          new BatchCall(account!, batch).send()
+        )
+      );
+    },
+    [account]
+  );
+
+  const checkForCounterpartyNullifications = useCallback(async () => {
     const nullifyEvents = await account!.getEncryptedEvents(
       ZImburseEscrowContract.events.EntitlementNullified,
       1,
@@ -163,66 +200,33 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     if (Object.keys(escrowNoteObj).length > 0) {
       await nullifyNotes(escrowNoteObj);
     }
-  };
+  }, [account, nullifyNotes]);
 
-  const nullifyNotes = async (escrowNoteObj: any) => {
-    const NULLIFY_CHUNK_SIZE = 10;
-    // load escrow contract instances
-    const escrowContracts = await Promise.all(
-      Object.keys(escrowNoteObj).map(async (address: string) => {
-        return await ZImburseEscrowContract.at(
-          AztecAddress.fromString(address),
-          account
-        );
-      })
-    );
+  const checkAndRegisterAccount = useCallback(
+    async (secretKey: Fr): Promise<AccountWalletWithSecretKey> => {
+      // load schnorr account
+      const schnorr = getSchnorrAccount(
+        pxe,
+        secretKey,
+        deriveSigningKey(secretKey),
+        0
+      );
 
-    // create transaction requests
-    const txRequests = escrowContracts.map((contract) => {
-      const requests = [];
-      const entropyVals = escrowNoteObj[contract.address.toString()];
-      // nullify entitlements can only nullify 10 notes at a time currently
-      for (let i = 0; i < entropyVals.length; i += NULLIFY_CHUNK_SIZE) {
-        const slice = entropyVals.slice(i, i + NULLIFY_CHUNK_SIZE);
-        // make sure array size is 10
-        slice.push(...new Array(10 - slice.length).fill(0));
-        requests.push(contract.methods.nullify_entitlements(slice).request());
+      // check if account is already registerd on pxe
+      const isRegistered = await pxe.getRegisteredAccount(schnorr.getAddress());
+
+      // if account not already registered then deploy to pxe
+      if (!isRegistered) {
+        await schnorr.deploy().wait();
       }
-      return requests;
-    });
 
-    // flatten requests and batch call
-    await Promise.all(
-      chunk(txRequests.flat(), 4).map((batch) =>
-        new BatchCall(account!, batch).send()
-      )
-    );
-  };
-
-  const checkAndRegisterAccount = async (
-    secretKey: Fr
-  ): Promise<AccountWalletWithSecretKey> => {
-    // load schnorr account
-    const schnorr = getSchnorrAccount(
-      pxe,
-      secretKey,
-      deriveSigningKey(secretKey),
-      0
-    );
-
-    // check if account is already registerd on pxe
-    const isRegistered = await pxe.getRegisteredAccount(schnorr.getAddress());
-
-    // if account not already registered then deploy to pxe
-    if (!isRegistered) {
-      await schnorr.deploy().wait();
-    }
-
-    return schnorr.getWallet();
-  };
+      return schnorr.getWallet();
+    },
+    [pxe]
+  );
 
   const checkAndGetRegistryAdmin =
-    async (): Promise<AccountWalletWithSecretKey> => {
+    useCallback(async (): Promise<AccountWalletWithSecretKey> => {
       const admin = getSchnorrAccount(
         pxe,
         Fr.fromHexString(ZIMBURSE_REGISTRY_ADMIN.Fr),
@@ -238,7 +242,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
       }
 
       return await admin.getWallet();
-    };
+    }, [pxe]);
 
   const connectToPXE = async () => {
     setWaitingForPXE(true);
@@ -275,7 +279,6 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
 
       // calculate contract class ID
       const artifact = ZImburseEscrowContract.artifact;
-      // @ts-ignore
       const contractClass = getContractClassFromArtifact(artifact);
       const escrowClassId = computeContractClassId(contractClass);
 
@@ -298,7 +301,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
 
       toast.success('Contracts succesfully deployed');
       setZimburseContracts({ registry, usdc });
-    } catch (err) {
+    } catch {
       toast.error('Error occurred deploying contracts');
     } finally {
       setDeployingContracts(false);
@@ -310,22 +313,25 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem(ZIMBURSE_WALLET_LS_KEY);
   };
 
-  const fetchTokenBalances = async (usdc: TokenContract) => {
-    setFetchingTokenBalance(true);
-    const publicBalance = await usdc.methods
-      .balance_of_public(account!.getAddress())
-      .simulate();
+  const fetchTokenBalances = useCallback(
+    async (usdc: TokenContract) => {
+      setFetchingTokenBalance(true);
+      const publicBalance = await usdc.methods
+        .balance_of_public(account!.getAddress())
+        .simulate();
 
-    const privateBalance = await usdc.methods
-      .balance_of_private(account!.getAddress())
-      .simulate();
+      const privateBalance = await usdc.methods
+        .balance_of_private(account!.getAddress())
+        .simulate();
 
-    setTokenBalance({
-      private: privateBalance,
-      public: publicBalance,
-    });
-    setFetchingTokenBalance(false);
-  };
+      setTokenBalance({
+        private: privateBalance,
+        public: publicBalance,
+      });
+      setFetchingTokenBalance(false);
+    },
+    [account]
+  );
 
   const loadContractInstances = async (admin: AccountWalletWithSecretKey) => {
     const storedRegistryAddress = localStorage.getItem(
@@ -385,7 +391,11 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
         await checkForCounterpartyNullifications();
       }
     })();
-  }, [account]);
+  }, [
+    checkForCounterpartyNullifications,
+    fetchTokenBalances,
+    zimburseContracts,
+  ]);
 
   useEffect(() => {
     (async () => {
@@ -413,7 +423,7 @@ export const AztecProvider = ({ children }: { children: ReactNode }) => {
       setAccount(acc);
       setWallets(resolvedWallets);
     })();
-  }, [pxe]);
+  }, [checkAndGetRegistryAdmin, checkAndRegisterAccount, pxe]);
 
   useEffect(() => {
     connectToPXE();

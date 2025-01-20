@@ -10,7 +10,7 @@ export default function LandingView(): JSX.Element {
 
   const actionText = useMemo(() => {
     if (!pxe) {
-      return `Not PXE found at ${DEFAULT_PXE_URL}`;
+      return `No PXE found at ${DEFAULT_PXE_URL}`;
     } else if (!account) {
       return 'Please connect a wallet';
     } else if (!registryContract && !tokenContract) {

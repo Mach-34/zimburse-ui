@@ -70,13 +70,6 @@ export const extractUnitedData = async (email: Buffer): Promise<EmailDisplayData
         maxBodyLength: UNITED_MAX_BODY_LENGTH
     });
 
-    const dkimRes = generateEmailVerifierInputsFromDKIMResult(dkimResult, {
-        removeSoftLineBreaks: true,
-        extractFrom: true,
-        extractTo: true,
-        maxBodyLength: UNITED_MAX_BODY_LENGTH
-    });
-
     // extract from and to
     const { from, to } = extractToAndFrom(header.storage, from_address_sequence as Sequence, to_address_sequence as Sequence);
 

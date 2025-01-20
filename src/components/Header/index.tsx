@@ -36,7 +36,7 @@ export default function Header(): JSX.Element {
     try {
       await navigator.clipboard.writeText(address.toString());
       toast.success('Address copied to clipboard!');
-    } catch (err) {
+    } catch {
       toast.error('Error occurred.');
     }
   };

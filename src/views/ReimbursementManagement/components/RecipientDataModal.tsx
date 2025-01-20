@@ -45,7 +45,11 @@ export default function RecipientDataModal({
     setAddingEntilement(true);
     try {
       await onAddEntitlement(amount, verifierId, spot, dateRange, destination);
-      toast.success(`${spot ? 'Spot' : 'Recurring'} entitlement added for recipient: ${recipient.address}`);
+      toast.success(
+        `${spot ? 'Spot' : 'Recurring'} entitlement added for recipient: ${
+          recipient.address
+        }`
+      );
     } catch (err) {
       toast.error('Error occurred adding entitlement');
       console.log('Error: ', err);
@@ -73,7 +77,9 @@ export default function RecipientDataModal({
               <div className='text-xl'>
                 {truncateAddress(recipient.address ?? '', 7, 7)}
               </div>
-              <div className='mt-16 text-2xl'>Total reimbursed: ${formatUSDC(recipient?.totalClaimed ?? 0n)}</div>
+              <div className='mt-16 text-2xl'>
+                Total reimbursed: ${formatUSDC(recipient?.totalClaimed ?? 0n)}
+              </div>
             </div>
             <div className='flex flex-col items-center'>
               <button
@@ -100,32 +106,38 @@ export default function RecipientDataModal({
               ))}
             </div>
             <div className='mt-4 overflow-y-auto'>
-              {!!recipient.policies?.active.length ? (
-                recipient.policies.active.map((entitlement: any, index: number) => (
-                  <div
-                    className='bg-white flex items-start justify-between mb-6 p-2'
-                    key={index}
-                  >
-                    <div>
-                      <div className='text-xl'>{entitlement.title}</div>
-                      <div className='text-xs'>
-                        {entitlement.spot ? 'Spot' : 'Recurring'}
+              {recipient.policies?.active.length > 0 ? (
+                recipient.policies.active.map(
+                  (entitlement: any, index: number) => (
+                    <div
+                      className='bg-white flex items-start justify-between mb-6 p-2'
+                      key={index}
+                    >
+                      <div>
+                        <div className='text-xl'>{entitlement.title}</div>
+                        <div className='text-xs'>
+                          {entitlement.spot ? 'Spot' : 'Recurring'}
+                        </div>
+                      </div>
+                      <div className='flex flex-col items-end'>
+                        <div
+                          className='bg-[#FF0000] cursor-pointer flex items-center p-0'
+                          onClick={() => setNullifyIndex(index)}
+                        >
+                          <X size={16} />
+                        </div>
+                        <div>
+                          Max amount: ${formatUSDC(entitlement.maxAmount ?? 0n)}
+                        </div>
+                        {/* {entitlement.paidOut !== undefined && <div>Paid out: ${formatUSDC(entitlement.paidOut ?? 0n)}</div>} */}
                       </div>
                     </div>
-                    <div className='flex flex-col items-end'>
-                      <div
-                        className='bg-[#FF0000] cursor-pointer flex items-center p-0'
-                        onClick={() => setNullifyIndex(index)}
-                      >
-                        <X size={16} />
-                      </div>
-                      <div>Max amount: ${formatUSDC(entitlement.maxAmount ?? 0n)}</div>
-                      {/* {entitlement.paidOut !== undefined && <div>Paid out: ${formatUSDC(entitlement.paidOut ?? 0n)}</div>} */}
-                    </div>
-                  </div>
-                ))
+                  )
+                )
               ) : (
-                <div className='flex gap-4 h-[350px] items-center justify-center text-xl'>No Entitlements</div>
+                <div className='flex gap-4 h-[350px] items-center justify-center text-xl'>
+                  No Entitlements
+                </div>
               )}
             </div>
           </div>
@@ -134,14 +146,18 @@ export default function RecipientDataModal({
       <AddEntitlementModal
         loading={addingEntitlement}
         onClose={() => setShowEntitlementModal(false)}
-        onFinish={(amount, verifier, spot, dateRange, destination) => addEntitlement(amount, verifier, spot, dateRange, destination)}
+        onFinish={(amount, verifier, spot, dateRange, destination) =>
+          addEntitlement(amount, verifier, spot, dateRange, destination)
+        }
         open={showEntitlementModal}
       />
       <ConfirmationModal
         loading={nullifying ? 'Nullifying...' : undefined}
         message={
           nullifyIndex >= 0
-            ? `Are you sure you want to nullify ${recipient.policies.active[nullifyIndex]?.title ?? ''}?`
+            ? `Are you sure you want to nullify ${
+                recipient.policies.active[nullifyIndex]?.title ?? ''
+              }?`
             : ''
         }
         onClose={() => setNullifyIndex(-1)}

@@ -1,11 +1,11 @@
 import { LucideIcon } from 'lucide-react';
-import { CSSProperties, useRef } from 'react';
+import { ChangeEventHandler, CSSProperties, useRef } from 'react';
 
 type FileInputProps = {
   accept: string;
   Icon?: LucideIcon;
   id: string;
-  onUpload: (e: any) => void;
+  onUpload: (e: ChangeEventHandler<HTMLInputElement>) => void;
   style?: CSSProperties;
   text: string;
 };

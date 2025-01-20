@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import AddPolicyModal from './components/AddPolicyModal';
 import deposit from '../../assets/deposit.svg';
 import TransactionHistoryModal from './components/TransactionHistoryModal';
@@ -21,8 +21,11 @@ import useEscrowContract from '../../hooks/useEscrowContract';
 import { ArrowLeft } from 'lucide-react';
 import PaymentChart from '../../components/PaymentChart';
 import { ZImburseEscrowContract } from '../../artifacts';
-import { ENTITLEMENT_TITLES, EVENT_BLOCK_LIMIT } from '../../utils/constants';
-
+import {
+  ENTITLEMENT_TITLES,
+  EVENT_BLOCK_LIMIT,
+  VERIFIERS,
+} from '../../utils/constants';
 type Participant = {
   address: string;
   name: string;
@@ -39,8 +42,6 @@ export type EscrowData = {
   escrowed: bigint;
   title: string;
 };
-
-export const VERIFIERS: { [key: string]: number } = { Linode: 2, United: 5 };
 
 export default function ReimbursementManagementView(): JSX.Element {
   const { id: escrowAddress } = useParams();
@@ -100,38 +101,62 @@ export default function ReimbursementManagementView(): JSX.Element {
     }, 0n);
   };
 
-  const fetchEntitlements = async (escrowContract: ZImburseEscrowContract) => {
-    // fetch spot entitlements
-    const spotPromise = await escrowContract.methods
-      .view_entitlements(
-        0,
-        account.getAddress(),
-        { _is_some: false, _value: AztecAddress.ZERO },
-        { _is_some: false, _value: 0 },
-        { _is_some: true, _value: true }
-      )
-      .simulate();
+  const fetchEventData = useCallback(async () => {
+    const { RecurringReimbursementClaimed, SpotReimbursementClaimed } =
+      ZImburseEscrowContract.events;
+    const recurringPromise = account!.getEncryptedEvents(
+      RecurringReimbursementClaimed,
+      1,
+      EVENT_BLOCK_LIMIT
+    );
+    const spotPromise = account!.getEncryptedEvents(
+      SpotReimbursementClaimed,
+      1,
+      EVENT_BLOCK_LIMIT
+    );
 
-    // fetch recurring entitlement
-    const recurringPromise = await escrowContract.methods
-      .view_entitlements(
-        0,
-        account.getAddress(),
-        { _is_some: false, _value: AztecAddress.ZERO },
-        { _is_some: false, _value: 0 },
-        { _is_some: true, _value: false }
-      )
-      .simulate();
-
-    const [spot, recurring] = await Promise.all([
-      spotPromise,
+    const [recurringClaims, spotClaims] = await Promise.all([
       recurringPromise,
+      spotPromise,
     ]);
+    return { recurringClaims, spotClaims };
+  }, [account]);
 
-    return { spot, recurring };
-  };
+  const fetchEntitlements = useCallback(
+    async (escrowContract: ZImburseEscrowContract) => {
+      // fetch spot entitlements
+      const spotPromise = await escrowContract.methods
+        .view_entitlements(
+          0,
+          account.getAddress(),
+          { _is_some: false, _value: AztecAddress.ZERO },
+          { _is_some: false, _value: 0 },
+          { _is_some: true, _value: true }
+        )
+        .simulate();
 
-  const fetchEscrowData = async () => {
+      // fetch recurring entitlement
+      const recurringPromise = await escrowContract.methods
+        .view_entitlements(
+          0,
+          account.getAddress(),
+          { _is_some: false, _value: AztecAddress.ZERO },
+          { _is_some: false, _value: 0 },
+          { _is_some: true, _value: false }
+        )
+        .simulate();
+
+      const [spot, recurring] = await Promise.all([
+        spotPromise,
+        recurringPromise,
+      ]);
+
+      return { spot, recurring };
+    },
+    [account]
+  );
+
+  const fetchEscrowData = useCallback(async () => {
     const titlePromise = escrowContract!.methods.get_title().simulate();
 
     const balancePromise = tokenContract!
@@ -174,30 +199,15 @@ export default function ReimbursementManagementView(): JSX.Element {
       participants: formattedParticipants,
       title,
     };
-  };
-
-  const fetchEventData = async () => {
-    const { RecurringReimbursementClaimed, SpotReimbursementClaimed } =
-      ZImburseEscrowContract.events;
-    // @ts-ignore
-    const recurringPromise = account!.getEncryptedEvents(
-      RecurringReimbursementClaimed,
-      1,
-      EVENT_BLOCK_LIMIT
-    );
-    // @ts-ignore
-    const spotPromise = account!.getEncryptedEvents(
-      SpotReimbursementClaimed,
-      1,
-      EVENT_BLOCK_LIMIT
-    );
-
-    const [recurringClaims, spotClaims] = await Promise.all([
-      recurringPromise,
-      spotPromise,
-    ]);
-    return { recurringClaims, spotClaims };
-  };
+  }, [
+    account,
+    escrowContract,
+    fetchEntitlements,
+    fetchEventData,
+    registryAdmin,
+    registryContract,
+    tokenContract,
+  ]);
 
   const formatParticipants = (
     participants: any[],
@@ -370,7 +380,13 @@ export default function ReimbursementManagementView(): JSX.Element {
         setRecipients(participants);
       }
     })();
-  }, [account, escrowContract, registryContract, tokenContract]);
+  }, [
+    account,
+    escrowContract,
+    fetchEscrowData,
+    registryContract,
+    tokenContract,
+  ]);
 
   return (
     <AppLayout>
@@ -457,7 +473,7 @@ export default function ReimbursementManagementView(): JSX.Element {
                   Add Recipient
                 </button>
                 <div className='flex-1 mt-4 overflow-y-auto w-full'>
-                  {!!recipients.length ? (
+                  {recipients.length > 0 ? (
                     recipients.map((recipient, index) => (
                       <div
                         className='bg-white cursor-pointer flex justify-between mt-2 px-2 py-1'
