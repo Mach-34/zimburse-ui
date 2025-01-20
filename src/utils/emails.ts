@@ -21,7 +21,7 @@ const extractToAndFrom = (header: string[], from_sequence: Sequence, to_sequence
 
     const fromBytes = header.slice(fromAddressStart, fromAddressEnd);
     const toBytes = header.slice(toAddressStart, toAddressEnd);
-    
+
     const from = Buffer.from(fromBytes.map(v => Number(v))).toString('utf8');
     const to = Buffer.from(toBytes.map(v => Number(v))).toString('utf8');
 
@@ -30,7 +30,7 @@ const extractToAndFrom = (header: string[], from_sequence: Sequence, to_sequence
 
 export const extractLinodeData = async (email: Buffer): Promise<EmailDisplayData> => {
     const dkimResult = await verifyDKIMSignature(email);
-    const {decoded_body, header, from_address_sequence, to_address_sequence} = generateEmailVerifierInputsFromDKIMResult(dkimResult, {
+    const { decoded_body, header, from_address_sequence, to_address_sequence } = generateEmailVerifierInputsFromDKIMResult(dkimResult, {
         removeSoftLineBreaks: true,
         extractFrom: true,
         extractTo: true,
@@ -55,7 +55,7 @@ export const extractLinodeData = async (email: Buffer): Promise<EmailDisplayData
     const linebreak = deserialzedHeader.indexOf('\r\n', dateIndex);
     const date = new Date(deserialzedHeader.slice(dateIndex + 5, linebreak));
 
-    return {amount, date, from, to}
+    return { amount, date, from, to }
 }
 
 export const extractUnitedData = async (email: Buffer): Promise<EmailDisplayData> => {
@@ -63,19 +63,19 @@ export const extractUnitedData = async (email: Buffer): Promise<EmailDisplayData
 
 
 
-    const {decoded_body, header, from_address_sequence, to_address_sequence} = generateEmailVerifierInputsFromDKIMResult(dkimResult, {
+    const { decoded_body, header, from_address_sequence, to_address_sequence } = generateEmailVerifierInputsFromDKIMResult(dkimResult, {
         removeSoftLineBreaks: true,
         extractFrom: true,
         extractTo: true,
         maxBodyLength: UNITED_MAX_BODY_LENGTH
-      });
+    });
 
-      const dkimRes = generateEmailVerifierInputsFromDKIMResult(dkimResult, {
+    const dkimRes = generateEmailVerifierInputsFromDKIMResult(dkimResult, {
         removeSoftLineBreaks: true,
         extractFrom: true,
         extractTo: true,
         maxBodyLength: UNITED_MAX_BODY_LENGTH
-      });
+    });
 
     // extract from and to
     const { from, to } = extractToAndFrom(header.storage, from_address_sequence as Sequence, to_address_sequence as Sequence);

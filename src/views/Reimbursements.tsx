@@ -351,12 +351,15 @@ export default function ReimbursementsView(): JSX.Element {
                   <div className='flex flex-col items-center justify-center w-full'>
                     {email ? (
                       <button
-                        className='bg-[#89B8FF] w-3/5'
+                        className='bg-[#89B8FF] flex gap-2 items-center justify-center w-3/5'
                         onClick={() => submitClaim()}
                       >
-                        {redeemingEntitlement
-                          ? 'Submitting claim...'
-                          : 'Submit Claim'}
+                        <div>
+                          {redeemingEntitlement
+                            ? 'Submitting claim...'
+                            : 'Submit Claim'}
+                        </div>
+                        {redeemingEntitlement && <Loader />}
                       </button>
                     ) : (
                       <div className='w-1/2'>
